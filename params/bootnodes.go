@@ -17,7 +17,8 @@
 package params
 
 var MainnetBootnodes = []string{
-	"/ip4/47.56.144.168/tcp/30403/ipfs/16Uiu2HAmKNPuWPPJZomFFKA2gqwjbcThf7PihRrsXMQmPS1PusDp",
+	"/ip4/101.251.230.212/tcp/30503/ipfs/16Uiu2HAmFMwPXtuLoxtA7rTJgbMDUE7nwFgE4YNRenWkoXMBVQKh", // beijing
+	"/ip4/47.56.144.168/tcp/30403/ipfs/16Uiu2HAmKNPuWPPJZomFFKA2gqwjbcThf7PihRrsXMQmPS1PusDp", // hongkong
 }
 
 var TestnetBootnodes = []string{
