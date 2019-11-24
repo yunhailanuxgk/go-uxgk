@@ -16,14 +16,17 @@
 
 package params
 
-var MainnetBootnodes = []string{}
+var MainnetBootnodes = []string{
+	"/ip4/47.56.144.168/tcp/30403/ipfs/16Uiu2HAmKNPuWPPJZomFFKA2gqwjbcThf7PihRrsXMQmPS1PusDp",
+}
 
 var TestnetBootnodes = []string{
 	//"enode://85ef2a2cb3e822c5c0db745fd442f8c93038cbb184ed3b0778dd976a2f50f8929e6bf084c36d8ba80b4ba735ef19957dd6cb54b7a3d8012b467fd2cc1e492a3c@101.251.230.212:30403",
 	"/ip4/101.251.230.212/tcp/30403/ipfs/16Uiu2HAmHPj9yEaDgut5Sp9URGDoaHNbUrCX67cppsy2r2NipUMu",
 }
 
-var DevnetBootnodes = []string{}
+var DevnetBootnodes = []string{
+}
 
 var RinkebyBootnodes = []string{}
 

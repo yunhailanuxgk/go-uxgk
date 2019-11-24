@@ -316,13 +316,13 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 // DefaultGenesisBlock returns the Ethereum main net genesis block.
 // https://github.com/ethereum/EIPs/issues/225
 func DefaultGenesisBlock() *Genesis {
-	genesisSigner := "0x00000000000000000000000000000000000000000000000000000000000000003a5fBaC6CA913599C5fde8c1638dB58d01De8A480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+	genesisSigner := "0x000000000000000000000000000000000000000000000000000000000000000054cfd8a3515ac552c4ef10badef50dc3ec6636d10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 	return &Genesis{
 		Config:     params.MainnetChainConfig,
 		Nonce:      0,
 		ExtraData:  hexutil.MustDecode(genesisSigner),
 		GasLimit:   50000000,
-		Difficulty: big.NewInt(2),
+		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(mainnetAllocData),
 	}
 }

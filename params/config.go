@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	MainnetGenesisHash = common.HexToHash("0x")                                                                 // enforce below configs on
-	TestnetGenesisHash = common.HexToHash("0xce489718281be862e7b356c7c304e2da3355da5bb132279ed66cfc99c346853c") // Testnet genesis hash to enforce below configs on
+	MainnetGenesisHash = common.HexToHash("0x7f9c4c4cb4da085a1fdff8ae54cc99f3ce3aca6c37747acb4a8de4b41c15682b")                                                                 // enforce below configs on
+	TestnetGenesisHash = common.HexToHash("0xce489718281be862e7b356c7c304e2da3355da5bb132279ed66cfc99c346853c")
 	DevnetGenesisHash  = common.HexToHash("0xe11f21ee330cfb50c3f31d9b792df2fb5e196739d562e642416974f339aa4304")
 )
 
@@ -42,12 +42,12 @@ var (
 		EIP158Block:    big.NewInt(0),
 		ByzantiumBlock: big.NewInt(0),
 
-		ChiefBaseAddress: common.HexToAddress("0x"),
+		ChiefBaseAddress: common.HexToAddress("0x3d4c0383a69d4ddd00b13d313ddd52d43d9d80fb"),
 
-		PocAddress: common.HexToAddress("0x"),
+		PocAddress: common.HexToAddress("0x9669f77367abc133545255fd6eb9c2a48b35c898"),
 
-		Chief100Block:   big.NewInt(0),
-		Chief100Address: common.HexToAddress("0x"),
+		Chief100Block:   big.NewInt(25),
+		Chief100Address: common.HexToAddress("0x23faac741bee78bd683f5846de48c2fe6e046381"),
 
 		Anmap001Block:   big.NewInt(0),
 		Anmap001Address: common.HexToAddress("0x"),
@@ -56,7 +56,6 @@ var (
 		SIP001Block: big.NewInt(0),
 		SIP002Block: big.NewInt(1),
 		SIP003Block: big.NewInt(3),
-
 		Tribe: &TribeConfig{},
 	}
 

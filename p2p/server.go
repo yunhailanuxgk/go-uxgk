@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cc14514/go-alibp2p"
+	"github.com/yunhailanuxgk/go-uxgk/params"
 	"math/big"
 	"net"
 	"strconv"
@@ -410,12 +411,18 @@ func (srv *Server) Start() (err error) {
 		p2pport = 0
 	}
 	var muxPort = 0
+	netid := big.NewInt(2015061320170611)
+	if params.IsTestnet() {
+		netid = big.NewInt(0)
+	} else if params.IsDevnet() {
+		netid = big.NewInt(1)
+	}
 	pub, _ := alibp2p.ECDSAPubEncode(&srv.PrivateKey.PublicKey)
 	log.Info("###################################################")
 	log.Info(fmt.Sprintf("# port = %d", p2pport))
 	log.Info(fmt.Sprintf("# maxpeers = %d", srv.Config.MaxPeers))
 	log.Info(fmt.Sprintf("# muxport = %d", muxPort))
-	log.Info(fmt.Sprintf("# networkid = %d", srv.Config.NetworkId))
+	log.Info(fmt.Sprintf("# networkid = %d", netid))
 	log.Info(fmt.Sprintf("# bootnode = %v", srv.Config.Alibp2pBootstrapNodes))
 	log.Info(fmt.Sprintf("# pubkey = %v", pub))
 	log.Info("###################################################")
@@ -425,13 +432,12 @@ func (srv *Server) Start() (err error) {
 		<-srv.quit
 		cancel()
 	}()
-
 	srv.alibp2pService = NewAlibp2p(
 		ctx,
 		p2pport,
 		muxPort,
 		srv.Config.MaxPeers,
-		big.NewInt(int64(srv.Config.NetworkId)), srv, nil)
+		netid, srv, nil)
 
 	srv.alibp2pService.Start()
 
