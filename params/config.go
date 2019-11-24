@@ -44,7 +44,7 @@ var (
 
 		ChiefBaseAddress: common.HexToAddress("0x3d4c0383a69d4ddd00b13d313ddd52d43d9d80fb"),
 
-		PocAddress: common.HexToAddress("0x9669f77367abc133545255fd6eb9c2a48b35c898"),
+		PocAddress: common.HexToAddress("0x3331a2d2f8e9f7a07f3e46d2a3f4bf4575169535"),
 
 		Chief100Block:   big.NewInt(25),
 		Chief100Address: common.HexToAddress("0x23faac741bee78bd683f5846de48c2fe6e046381"),
