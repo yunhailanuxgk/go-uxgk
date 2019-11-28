@@ -972,3 +972,11 @@ func (srv *Server) SetFallbackNodes(urls []string) error {
 	}
 	return srv.alibp2pService.BootstrapOnce()
 }
+
+func (srv *Server) Alibp2pPeers() map[string]interface{} {
+	m := make(map[string]interface{})
+	d, r, t := srv.alibp2pService.p2pservice.Peers()
+	m["direct"], m["relay"], m["total"] = d, r, t
+	return m
+}
+

@@ -57,6 +57,10 @@ func (api *PrivateAdminAPI) AddPeer(url string) (bool, error) {
 	return true, nil
 }
 
+func (api *PublicAdminAPI) Conns() (map[string]interface{}, error) {
+	return api.node.Server().Alibp2pPeers(), nil
+}
+
 // RemovePeer disconnects from a a remote node if the connection exists
 func (api *PrivateAdminAPI) RemovePeer(url string) (bool, error) {
 	// Make sure the server is running, fail otherwise

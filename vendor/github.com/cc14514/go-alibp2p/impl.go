@@ -192,6 +192,24 @@ func (self *Service) SendMsgAfterClose(to, protocolID string, msg []byte) error 
 	return nil
 }
 
+func (self *Service) Connect(url string) error {
+	ipfsaddr, err := ma.NewMultiaddr(url)
+	if err != nil {
+		return err
+	}
+	pid, err := ipfsaddr.ValueForProtocol(ma.P_IPFS)
+	if err != nil {
+		return err
+	}
+	peerid, err := peer.IDB58Decode(pid)
+	if err != nil {
+		return err
+	}
+	targetPeerAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", peer.IDB58Encode(peerid)))
+	targetAddr := ipfsaddr.Decapsulate(targetPeerAddr)
+	return self.host.Connect(self.ctx, peer.AddrInfo{ID: peerid, Addrs: []ma.Multiaddr{targetAddr}})
+}
+
 func (self *Service) SendMsg(to, protocolID string, msg []byte) (peer.ID, network.Stream, int, error) {
 	peerid, err := peer.IDB58Decode(to)
 	if err != nil {
@@ -552,9 +570,4 @@ func (self *Service) peersWithoutBootnodes() []peer.AddrInfo {
 	}
 
 	return result
-}
-
-func (self *Service) Connect(url string) error {
-	fmt.Println("TODO")
-	return nil	
 }

@@ -275,6 +275,10 @@ web3._extend({
 			getter: 'admin_peers'
 		}),
 		new web3._extend.Property({
+			name: 'conns',
+			getter: 'admin_conns'
+		}),
+		new web3._extend.Property({
 			name: 'datadir',
 			getter: 'admin_datadir'
 		}),
