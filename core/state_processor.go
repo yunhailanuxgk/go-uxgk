@@ -101,6 +101,7 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 	vmenv := vm.NewEVM(context, statedb, config, cfg)
 	// Apply the transaction to the current state (included in the env)
 	_, gas, failed, err := ApplyMessage(vmenv, msg, gp, bc.currentBlock.Number())
+	//showstate("2222", vmenv, tx.To(), err)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -109,13 +110,17 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 		return nil, nil, errors.New("chief_execute_fail")
 	}
 
+	//showstate("333333", vmenv, tx.To(), err)
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
 		statedb.Finalise(true)
+		//showstate("4444444", vmenv, tx.To(), err)
 	} else {
 		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+		//showstate("55555555", vmenv, tx.To(), err)
 	}
+	//showstate("6666666", vmenv, tx.To(), err)
 	// add by liangc
 	if params.IsSIP001Block(bc.currentBlock.Number()) && tx.To() != nil && params.IsChiefAddress(*tx.To()) && params.IsChiefUpdate(tx.Data()) {
 		log.Debug("⛽️ --> pay_back_chief_gas", "txid", tx.Hash().Hex(), "gas", gas)
@@ -140,6 +145,18 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
-
 	return receipt, gas, err
 }
+
+//func showstate(flag string, evm *vm.EVM, to *common.Address, err error) {
+//	if *to != common.HexToAddress("0x111") {
+//		return
+//	}
+//	db := evm.StateDB
+//	fmt.Println(flag, "show state ================>", err)
+//	db.ForEachStorage(common.HexToAddress("0x111"), func(k, v common.Hash) bool {
+//		fmt.Println("-->", k, v)
+//		return true
+//	})
+//	fmt.Println(flag, "show state ================<", err)
+//}

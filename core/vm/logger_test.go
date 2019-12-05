@@ -68,3 +68,7 @@ func TestStoreCapture(t *testing.T) {
 		t.Errorf("expected %x, got %x", exp, logger.changedValues[contract.Address()][index])
 	}
 }
+
+func TestAddr(t *testing.T) {
+	t.Log(common.HexToAddress("0x111").Hex())
+}

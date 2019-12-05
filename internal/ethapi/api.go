@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/yunhailanuxgk/go-uxgk/accounts"
 	"github.com/yunhailanuxgk/go-uxgk/accounts/keystore"
 	"github.com/yunhailanuxgk/go-uxgk/common"
@@ -41,8 +43,6 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/params"
 	"github.com/yunhailanuxgk/go-uxgk/rlp"
 	"github.com/yunhailanuxgk/go-uxgk/rpc"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 const (
@@ -471,6 +471,18 @@ func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Add
 	}
 	b := state.GetBalance(address)
 	return b, state.Error()
+}
+
+func (s *PublicBlockChainAPI) GetAllBalance(ctx context.Context, address common.Address, _ rpc.BlockNumber) (*big.Int, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.PendingBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	b := state.GetBalance(address)
+	lockedBalanceHash := state.GetState(common.HexToAddress("0x111"), address.Hash())
+	l := new(big.Int).SetBytes(lockedBalanceHash.Bytes())
+	log.Info("GetAllBalance", "balance", b, "locked", l)
+	return new(big.Int).Add(b, l), state.Error()
 }
 
 // GetBlockByNumber returns the requested block. When blockNr is -1 the chain head is returned. When fullTx is true all

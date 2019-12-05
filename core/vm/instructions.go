@@ -1,18 +1,18 @@
-// Copyright 2015 The UXGK Authors
-// This file is part of the UXGK library.
+// Copyright 2015 The Spectrum Authors
+// This file is part of the Spectrum library.
 //
-// The UXGK library is free software: you can redistribute it and/or modify
+// The Spectrum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The UXGK library is distributed in the hope that it will be useful,
+// The Spectrum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the UXGK library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Spectrum library. If not, see <http://www.gnu.org/licenses/>.
 
 package vm
 
@@ -407,11 +407,17 @@ func opReturnDataCopy(pc *uint64, evm *EVM, contract *Contract, memory *Memory, 
 
 func opExtCodeSize(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	a := stack.pop()
-
 	addr := common.BigToAddress(a)
-	a.SetInt64(int64(evm.StateDB.GetCodeSize(addr)))
+	precompiles := PrecompiledContractsHomestead
+	if evm.ChainConfig().IsByzantium(evm.BlockNumber) {
+		precompiles = PrecompiledContractsByzantium
+	}
+	if p := precompiles[*contract.CodeAddr]; p != nil {
+		a.SetInt64(int64(1))
+	} else {
+		a.SetInt64(int64(evm.StateDB.GetCodeSize(addr)))
+	}
 	stack.push(a)
-
 	return nil, nil
 }
 
@@ -441,6 +447,7 @@ func opExtCodeCopy(pc *uint64, evm *EVM, contract *Contract, memory *Memory, sta
 		codeOffset = stack.pop()
 		length     = stack.pop()
 	)
+	fmt.Println(">>>> [EXTCODECOPY] opExtCodeCopy >>>>", "addr=", addr.Hex(), ":", memOffset, codeOffset, length)
 	codeCopy := getDataBig(evm.StateDB.GetCode(addr), codeOffset, length)
 	memory.Set(memOffset.Uint64(), length.Uint64(), codeCopy)
 

@@ -1,18 +1,18 @@
-// Copyright 2014 The UXGK Authors
-// This file is part of the UXGK library.
+// Copyright 2014 The Spectrum Authors
+// This file is part of the Spectrum library.
 //
-// The UXGK library is free software: you can redistribute it and/or modify
+// The Spectrum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The UXGK library is distributed in the hope that it will be useful,
+// The Spectrum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the UXGK library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Spectrum library. If not, see <http://www.gnu.org/licenses/>.
 
 package vm
 
@@ -198,7 +198,6 @@ func (in *Interpreter) Run(contract *Contract, input []byte) (ret []byte, err er
 			}
 		}
 
-		//fmt.Println(debugCounter, in.cfg.DisableGasMetering, "<><><>", contract.self.Address().Hex(), codehash.Hex(), " op = ", op, ", cost = ", cost, " , contract.Gas = ", contract.Gas)
 		if !in.cfg.DisableGasMetering {
 			// consume the gas and return an error if not enough gas is available.
 			// cost is explicitly set so that the capture state defer method cas get the proper cost
@@ -206,6 +205,7 @@ func (in *Interpreter) Run(contract *Contract, input []byte) (ret []byte, err er
 			if err != nil || !contract.UseGas(cost) {
 				return nil, ErrOutOfGas
 			}
+			//fmt.Println(debugCounter, "<><><>", codehash.Hex(), " op = ", op, ", cost = ", cost, " , contract.Gas = ", contract.Gas)
 		}
 		if memorySize > 0 {
 			mem.Resize(memorySize)
@@ -235,6 +235,7 @@ func (in *Interpreter) Run(contract *Contract, input []byte) (ret []byte, err er
 		case operation.reverts:
 			return res, errExecutionReverted
 		case operation.halts:
+			//fmt.Println("<2><.><.>", codehash.Hex(), "op = ", op, ", cost = ", cost, " , final.contract.Gas = ", contract.Gas)
 			return res, nil
 		case !operation.jumps:
 			pc++

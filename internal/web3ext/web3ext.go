@@ -484,6 +484,13 @@ web3._extend({
 });
 `
 
+/*
+	new web3._extend.Method({
+		name: 'getAllBalance',
+		call: 'eth_getAllBalance',
+		params: 2
+	}),
+*/
 const Eth_JS = `
 web3._extend({
 	property: 'eth',

@@ -1,22 +1,23 @@
-// Copyright 2014 The UXGK Authors
-// This file is part of the UXGK library.
+// Copyright 2014 The Spectrum Authors
+// This file is part of the Spectrum library.
 //
-// The UXGK library is free software: you can redistribute it and/or modify
+// The Spectrum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The UXGK library is distributed in the hope that it will be useful,
+// The Spectrum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the UXGK library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Spectrum library. If not, see <http://www.gnu.org/licenses/>.
 
 package vm
 
 import (
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -50,7 +51,7 @@ func run(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 			precompiles = PrecompiledContractsByzantium
 		}
 		if p := precompiles[*contract.CodeAddr]; p != nil {
-			return RunPrecompiledContract(p, input, contract)
+			return RunPrecompiledContract(&PrecompiledContext{evm, contract}, p, input, contract)
 		}
 	}
 	// modify by liangc
@@ -64,6 +65,7 @@ func run(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 	} else {
 		evm.interpreter.cfg.DisableGasMetering = false
 	}
+
 	return evm.interpreter.Run(contract, input)
 }
 
@@ -75,7 +77,7 @@ func createRun(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 			precompiles = PrecompiledContractsByzantium
 		}
 		if p := precompiles[*contract.CodeAddr]; p != nil {
-			return RunPrecompiledContract(p, input, contract)
+			return RunPrecompiledContract(&PrecompiledContext{evm, contract}, p, input, contract)
 		}
 	}
 	createSync.Store(*contract.CodeAddr, struct{}{})
@@ -214,7 +216,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}()
 	}
 	ret, err = run(evm, contract, input)
-
+	//showstate(evm, contract, err)
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
@@ -225,6 +227,19 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 	}
 	return ret, contract.Gas, err
+}
+
+func showstate(evm *EVM, contract *Contract, err error) {
+	if contract.Address() != LockLedgerAddr {
+		return
+	}
+	db := evm.StateDB
+	fmt.Println("11111111 show state ================>", err)
+	db.ForEachStorage(LockLedgerAddr, func(k, v common.Hash) bool {
+		fmt.Println("-->", k, v)
+		return true
+	})
+	fmt.Println("11111111 show state ================<", err)
 }
 
 // CallCode executes the contract associated with the addr with the given input
