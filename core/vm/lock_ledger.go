@@ -51,7 +51,7 @@ func (l *LockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amou
 	log.Info("LockLedger.lock", "from", from.Hex(), "to", to.Hex(), "amount", amount)
 	db := ctx.evm.StateDB
 	balance := db.GetBalance(from)
-	if balance.Cmp(amount) < 0 {
+	if balance == nil || amount == nil || balance.Cmp(amount) < 0 {
 		return nil, errors.New("balance too low")
 	}
 	db.SubBalance(from, amount)
@@ -76,7 +76,7 @@ func (l *LockLedger) unlock(ctx *PrecompiledContext, from, to common.Address, am
 	}
 	preH := get(db, to.Hash())
 	preAmount := new(big.Int).SetBytes(preH.Bytes())
-	if preAmount.Cmp(amount) < 0 {
+	if amount == nil || preAmount == nil || preAmount.Cmp(amount) < 0 {
 		return nil, errors.New("preAmount too low")
 	}
 	finalAmount := new(big.Int).Sub(preAmount, amount)
