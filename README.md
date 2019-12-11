@@ -38,53 +38,6 @@ $ make uxgk
 
     > personal.newAccount()
 
-## Get your own miner id
-
-    Every node has it's own miner id, you can run getMiner() function to get that id:
-
-    > tribe.getMiner() 
-    
-## Bind your own miner id to wallet address
-
-    Users can bind their miner ID to a wallet address:
-
-    > tribe.bind("account","passwd") 
-    
-    Or Users can only generate binding signatures at the terminal:
-    
-    > tribe.bindSign("account") 
-
-## Deposit uxgk for miner
-
-    Users can become miner by deposit uxgk:
-
-    > tribe.pocDeposit("account","passwd") 
-
-
-## Start mining
-
-    Users can start mining or resume it:
-
-    > tribe.pocStart("account","passwd") 
-
-
-## Stop mining
-
-    Users can stop mining:
-
-    > tribe.pocStop("account","passwd") 
-    
-## Withdraw uxgk
-
-    Users can withdraw uxgk:
-
-    > tribe.pocWithdraw("account","passwd")   
-    
-## More functions
-    Users can input tribe to view:
-    
-    > tribe
-    
 ## Security-related 
   
 ### Encrypt your nodekey
@@ -95,4 +48,3 @@ $ make uxgk
 
      $ ./build/bin/uxgk security --unlock
      
-
