@@ -4,7 +4,7 @@ UXGK is an [Ethereum-compatible](https://github.com/ethereum/go-ethereum) projec
 BlockChain Browser Address](http://chain.uxgk.com).
 
 
-Since the list of signers is 17, it is recommended that the confirmation number of general transfer transaction block be set to 17 (one round), and that of exchange block be set to 34 (two rounds).
+Since the list of signers is 11, it is recommended that the confirmation number of general transfer transaction block be set to 11 (one round), and that of exchange block be set to 22 (two rounds).
 
 ## List of Chain ID's:
 | Chain(s)    |  CHAIN_ID  | 
