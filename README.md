@@ -1,7 +1,7 @@
 # UXGK
 
 UXGK is an [Ethereum-compatible](https://github.com/ethereum/go-ethereum) project. It uses a new consensus and new block reward for UXGK ecosystem devices and IOT. And you can view the transactions on the [
-BlockChain Browser Address](https://uxgk.pub).
+BlockChain Browser Address](http://chain.uxgk.com).
 
 
 Since the list of signers is 17, it is recommended that the confirmation number of general transfer transaction block be set to 17 (one round), and that of exchange block be set to 34 (two rounds).
