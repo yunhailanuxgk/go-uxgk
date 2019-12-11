@@ -1,6 +1,6 @@
 # UXGK
 
-UXGK is an [Ethereum-compatible](https://github.com/ethereum/go-ethereum) project. It uses a new consensus and new block reward for SmartMesh ecosystem devices and IOT. And you can view the transactions on the [
+UXGK is an [Ethereum-compatible](https://github.com/ethereum/go-ethereum) project. It uses a new consensus and new block reward for UXGK ecosystem devices and IOT. And you can view the transactions on the [
 BlockChain Browser Address](https://uxgk.pub).
 
 
