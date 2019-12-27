@@ -17,8 +17,10 @@
 package p2p
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"sort"
 	"strings"
@@ -204,6 +206,7 @@ func (p *Peer) run() (remoteRequested bool, err error) {
 
 	// Wait for an error or disconnect.
 loop:
+	/*
 	for {
 		select {
 		case err = <-writeErr:
@@ -226,6 +229,44 @@ loop:
 			reason = discReasonForError(err)
 			break loop
 		case err = <-p.disc:
+			break loop
+		}
+	}
+	*/
+
+	for {
+		select {
+		case err = <-writeErr:
+			// A write finished. Allow the next write to start if
+			// there was no error.
+			if err != nil {
+				if err.Error() == "unlink" {
+					reason = DiscUnlinkError
+				} else {
+					reason = DiscNetworkError
+				}
+				break loop
+			}
+			writeStart <- struct{}{}
+		case err = <-readErr:
+			if r, ok := err.(DiscReason); ok {
+				remoteRequested = true
+				reason = DiscUnlinkError
+				log.Error("peer.readerr", "err", r)
+				//reason = r
+			} else if err.Error() == "unlink" {
+				reason = DiscUnlinkError
+			} else {
+				reason = DiscNetworkError
+			}
+			break loop
+		case err = <-p.protoErr:
+			//log.Trace("read out err", "err", err)
+			log.Debug("disc reason for error", "reason", discReasonForError(err))
+			reason = DiscUnlinkError
+			break loop
+		case err = <-p.disc:
+			reason = discReasonForError(err)
 			break loop
 		}
 	}
@@ -472,3 +513,67 @@ func (p *Peer) Info() *PeerInfo {
 	}
 	return info
 }
+
+
+type (
+	qmsg struct {
+		Code       uint64
+		Size       uint32 // size of the paylod
+		ReceivedAt uint64
+		Payload    []byte
+	}
+)
+
+const RAWMSG = 0xffffffff
+
+var (
+	alibp2pMailboxEvent event.Feed
+	msgToBytesFn = func(msg Msg) ([]byte, error) {
+		data, err := ioutil.ReadAll(msg.Payload)
+		//log.Debug("msgToBytesFn", "msgCode", msg.Code, "msgSize", msg.Size)
+		if err != nil {
+			log.Error("msgToBytesFn-error", "err", err)
+			return nil, err
+		}
+		qm := &qmsg{
+			Code:       msg.Code,
+			Size:       msg.Size,
+			ReceivedAt: uint64(time.Now().Unix()),
+			Payload:    data,
+		}
+		dang, err := rlp.EncodeToBytes(qm)
+		if err != nil {
+			return nil, err
+		}
+		return dang, nil
+	}
+	bytesToMsgFn = func(data []byte) (Msg, error) {
+		qm := new(qmsg)
+		err := rlp.DecodeBytes(data, qm)
+		if err != nil {
+			log.Error("bytesToMsgFn_error : unknow msg will return rawmsg", "err", err)
+			msg := Msg{}
+			if len(data) > 0 {
+				msg = Msg{
+					Code:       RAWMSG,
+					Size:       uint32(len(data)),
+					ReceivedAt: time.Unix(int64(qm.ReceivedAt), 0),
+					Payload:    bytes.NewReader(data),
+				}
+				log.Warn("bytesToMsgFn-raw-msg", "len", len(data), "data", data)
+				err = nil
+			}
+			return msg, err
+		} else {
+			//log.Debug("bytesToMsgFn", "msgCode", qm.Code, "msgSize", qm.Size)
+			msg := Msg{
+				Code:       qm.Code,
+				Size:       qm.Size,
+				ReceivedAt: time.Unix(int64(qm.ReceivedAt), 0),
+				Payload:    bytes.NewReader(qm.Payload),
+			}
+			return msg, nil
+		}
+	}
+)
+

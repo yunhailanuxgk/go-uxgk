@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	netmux "github.com/cc14514/go-mux-transport"
+	golog "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -19,6 +20,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	opts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	ma "github.com/multiformats/go-multiaddr"
+	gologging "github.com/whyrusleeping/go-logging"
 	"golang.org/x/xerrors"
 	"io/ioutil"
 	"log"
@@ -28,7 +30,20 @@ import (
 )
 
 func NewService(cfg Config) Alibp2pService {
+	switch cfg.Loglevel {
+	case 5:
+		golog.SetAllLoggers(gologging.DEBUG)
+	case 3, 4:
+		golog.SetAllLoggers(gologging.NOTICE)
+	case 1, 2:
+		golog.SetAllLoggers(gologging.WARNING)
+	case 0:
+		golog.SetAllLoggers(gologging.CRITICAL)
+	default:
+		golog.SetAllLoggers(gologging.ERROR)
+	}
 	log.Println("alibp2p.NewService", cfg)
+
 	var (
 		err             error
 		router          routing.Routing
@@ -47,6 +62,7 @@ func NewService(cfg Config) Alibp2pService {
 		priv = (crypto.PrivKey)(_p)
 	} else {
 		priv, err = loadid(cfg.Homedir)
+		cfg.PrivKey = (*ecdsa.PrivateKey)((priv).(*crypto.Secp256k1PrivateKey))
 	}
 	list := make([]ma.Multiaddr, 0)
 	listen0, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", cfg.Port))
@@ -80,7 +96,7 @@ func NewService(cfg Config) Alibp2pService {
 	if p, err := cfg.ProtectorOpt(); err == nil {
 		optlist = append(optlist, p)
 	}
-	optlist = append(optlist, cfg.MuxTransportOption())
+	optlist = append(optlist, cfg.MuxTransportOption(cfg.Loglevel))
 
 	host, err := libp2p.New(cfg.Ctx, optlist...)
 	if err != nil {
@@ -211,6 +227,9 @@ func (self *Service) Connect(url string) error {
 }
 
 func (self *Service) SendMsg(to, protocolID string, msg []byte) (peer.ID, network.Stream, int, error) {
+	return self.sendMsg(to, protocolID, msg, notimeout)
+}
+func (self *Service) sendMsg(to, protocolID string, msg []byte, timeout time.Time) (peer.ID, network.Stream, int, error) {
 	peerid, err := peer.IDB58Decode(to)
 	if err != nil {
 		ipfsaddr, err := ma.NewMultiaddr(to)
@@ -249,6 +268,10 @@ func (self *Service) SendMsg(to, protocolID string, msg []byte) (peer.ID, networ
 		return peerid, nil, 0, err
 	}
 	var total int
+	if notimeout != timeout {
+		s.SetWriteDeadline(timeout)
+		defer s.SetWriteDeadline(notimeout)
+	}
 	total, err = s.Write(msg)
 	if err != nil {
 		log.Println(err)
@@ -321,24 +344,41 @@ func (self *Service) OnConnected(t ConnType, preMsg PreMsg, callbackFn ConnectEv
 			if err == nil {
 				preRtn = resp
 			} else {
-				preRtn = []byte(err.Error())
+				preRtn = append(make([]byte, 8), []byte(err.Error())...)
 			}
 		}
 		callbackFn(in, sid, pubkey, preRtn)
 	}
 }
 
-func (self *Service) Request(to, proto string, pkg []byte) ([]byte, error) {
-	_, s, _, err := self.SendMsg(to, proto, pkg)
+func (self *Service) RequestWithTimeout(to, proto string, pkg []byte, timeout time.Duration) ([]byte, error) {
+	tot := notimeout
+	if timeout > 0 {
+		tot = time.Now().Add(timeout)
+	}
+	_, s, _, err := self.sendMsg(to, proto, pkg, tot)
 	if err == nil {
-		s.SetDeadline(time.Now().Add(10 * time.Second))
-		defer helpers.FullClose(s)
+		if tot != notimeout {
+			s.SetReadDeadline(time.Now().Add(timeout))
+		} else {
+			s.SetReadDeadline(time.Now().Add(10 * time.Second))
+		}
+		defer func() {
+			if s != nil {
+				s.SetReadDeadline(notimeout)
+				helpers.FullClose(s)
+			}
+		}()
 		buf, err := ioutil.ReadAll(s)
 		if err == nil {
 			return buf, nil
 		}
 	}
 	return nil, err
+}
+
+func (self *Service) Request(to, proto string, pkg []byte) ([]byte, error) {
+	return self.RequestWithTimeout(to, proto, pkg, 0)
 }
 
 func (self *Service) OnDisconnected(callback DisconnectEvent) {
@@ -570,4 +610,8 @@ func (self *Service) peersWithoutBootnodes() []peer.AddrInfo {
 	}
 
 	return result
+}
+
+func (self *Service) Nodekey() *ecdsa.PrivateKey {
+	return self.cfg.PrivKey
 }

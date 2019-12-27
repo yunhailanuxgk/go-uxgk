@@ -25,6 +25,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"io"
+	"time"
 )
 
 type (
@@ -37,17 +38,22 @@ type (
 		Alibp2pService
 		SetStreamHandler(protoid string, handler func(s network.Stream))
 		SendMsg(to, protocolID string, msg []byte) (peer.ID, network.Stream, int, error)
+		Nodekey() *ecdsa.PrivateKey
 	}
 
 	Alibp2pService interface {
 		Start()
 		Myid() (id string, addrs []string)
+		Connect(url string) error
 		ClosePeer(pubkey *ecdsa.PublicKey) error
 		SetBootnode(peer ...string) error
 		SetHandler(pid string, handler StreamHandler)
-		Connect(url string) error
+
 		SendMsgAfterClose(to, protocolID string, msg []byte) error
 		Request(to, proto string, msg []byte) ([]byte, error)
+
+		RequestWithTimeout(to, proto string, pkg []byte, timeout time.Duration) ([]byte, error)
+
 		PreConnect(pubkey *ecdsa.PublicKey) error
 
 		OnConnected(ConnType, PreMsg, ConnectEvent)

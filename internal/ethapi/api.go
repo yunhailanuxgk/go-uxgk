@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/yunhailanuxgk/go-uxgk/contracts/erc20token"
 	"math/big"
 	"strings"
 	"time"
@@ -1054,6 +1055,27 @@ func (s *PublicTransactionPoolAPI) GetRawTransactionByHash(ctx context.Context, 
 	// Serialize to RLP and return
 	return rlp.EncodeToBytes(tx)
 }
+
+/*
+	_initialSupply, _ = new(big.Int).SetString("10000000000000000000", 10)
+	_name             = "HelloWorld"
+	_symbol           = "HWT"
+	_decimals         = big.NewInt(18)
+*/
+func (s *PublicTransactionPoolAPI) CompileToken(initialSupply string, name string, symbol string, decimals *big.Int) (hexutil.Bytes, error) {
+	supply , ok := new(big.Int).SetString(initialSupply,10)
+	if !ok {
+		return nil,errors.New("initial supply error")
+	}
+	fmt.Println("-------------------------------------------------------------")
+	fmt.Println("initialSupply", initialSupply)
+	fmt.Println("name", name)
+	fmt.Println("symbol", symbol)
+	fmt.Println("decimals", decimals)
+	fmt.Println("-------------------------------------------------------------")
+	return erc20token.Template.Compile(supply, name, symbol, decimals)
+}
+
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash.
 func (s *PublicTransactionPoolAPI) GetTransactionReceipt(hash common.Hash) (map[string]interface{}, error) {
