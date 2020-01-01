@@ -145,3 +145,33 @@ func (abi *ABI) MethodById(sigdata []byte) *Method {
 	}
 	return nil
 }
+
+// add by liangc : 用来解析内置合约的 Input []byte
+func (abi ABI) UnpackInput(v interface{}, name string, input []byte) (err error) {
+	if len(input) == 0 {
+		return fmt.Errorf("abi: unmarshalling empty output")
+	}
+	// since there can't be naming collisions with contracts and events,
+	// we need to decide whether we're calling a method or an event
+	if method, ok := abi.Methods[name]; ok {
+		if len(input)%32 != 0 {
+			return fmt.Errorf("abi: improperly formatted output")
+		}
+		return method.Inputs.Unpack(v, input)
+	} else if event, ok := abi.Events[name]; ok {
+		return event.Inputs.Unpack(v, input)
+	}
+	return fmt.Errorf("abi: could not locate named method or event")
+}
+
+func (abi ABI) PackOutput(name string, args ...interface{}) ([]byte, error) {
+	method, exist := abi.Methods[name]
+	if !exist {
+		return nil, fmt.Errorf("method '%s' not found", name)
+	}
+	arguments, err := method.Outputs.Pack(args...)
+	if err != nil {
+		return nil, err
+	}
+	return arguments, nil
+}

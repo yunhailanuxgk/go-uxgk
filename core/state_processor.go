@@ -18,8 +18,6 @@ package core
 
 import (
 	"errors"
-	"math/big"
-
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/consensus"
 	"github.com/yunhailanuxgk/go-uxgk/consensus/misc"
@@ -29,6 +27,7 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
 	"github.com/yunhailanuxgk/go-uxgk/params"
+	"math/big"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -104,6 +103,16 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 	//showstate("2222", vmenv, tx.To(), err)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// add by linagc : 如果 to==nil 就是创建合约，此时判断是否为 erc20 合约
+	if tx.To() == nil && len(tx.Data()) > 4 && params.ERC20Trait.IsERC20(tx.Data()) {
+		// TODO
+		log.Info("TODO : ERC20 deploy , check name and symbol")
+		log.Info("TODO : ERC20 deploy , check name and symbol")
+		log.Info("TODO : ERC20 deploy , check name and symbol")
+		log.Info("TODO : ERC20 deploy , check name and symbol")
+		log.Info("TODO : ERC20 deploy , check name and symbol")
 	}
 
 	if tx.To() != nil && params.IsChiefAddress(*tx.To()) && params.IsChiefUpdate(tx.Data()) && failed {
