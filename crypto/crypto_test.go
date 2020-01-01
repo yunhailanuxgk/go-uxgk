@@ -587,3 +587,11 @@ func TestVRFForS256Fenbu2(t *testing.T) {
 	fmt.Printf("total=%d", avg)
 	fmt.Printf("avg=%d", avg/n)
 }
+
+func TestSig(t *testing.T) {
+	priv, _ := ecdsa.GenerateKey(S256(), rand.Reader)
+	for i := byte(0); i < 254 ; i++ {
+		r, s, _ := ecdsa.Sign(rand.Reader, priv, []byte{byte(i)})
+		t.Log(i, len(r.Bytes()), len(s.Bytes()))
+	}
+}

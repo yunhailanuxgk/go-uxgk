@@ -8,14 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cc14514/go-alibp2p"
+	"io"
+	"math/big"
+	"net"
 	"github.com/yunhailanuxgk/go-uxgk/event"
 	"github.com/yunhailanuxgk/go-uxgk/log"
 	"github.com/yunhailanuxgk/go-uxgk/p2p/discover"
 	"github.com/yunhailanuxgk/go-uxgk/rlp"
-	"io"
-	"io/ioutil"
-	"math/big"
-	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -27,11 +26,10 @@ const (
 	premsgpid        = "/premsg/1.0.0"
 	msgpid           = "/msg/1.0.0"
 	mailboxpid       = "/mailbox/1.0.0"
-	senderpool       = 1024
-	msgCache         = 16
-	setupRetryPeriod = 60 // sec
-	bootstrapPeriod  = 30 // sec
-	RAWMSG           = 0xffffffff
+	senderpool       = 512
+	msgCache         = 8
+	setupRetryPeriod = 120 // sec
+	bootstrapPeriod  = 45  // sec
 )
 
 const (
@@ -78,6 +76,7 @@ type (
 		msgReaders, retryList, allowPeers *sync.Map
 	}
 	alibp2pTransport struct {
+		ctx        context.Context
 		pubkey     *ecdsa.PublicKey
 		sessionKey string
 		service    *Alibp2p
@@ -87,66 +86,6 @@ type (
 	peerCounter struct {
 		counter map[string]map[string]string
 		lock    *sync.RWMutex
-	}
-
-	qmsg struct {
-		Code       uint64
-		Size       uint32 // size of the paylod
-		ReceivedAt uint64
-		Payload    []byte
-	}
-)
-
-
-var (
-	alibp2pMailboxEvent event.Feed
-
-	msgToBytesFn = func(msg Msg) ([]byte, error) {
-		data, err := ioutil.ReadAll(msg.Payload)
-		//log.Debug("msgToBytesFn", "msgCode", msg.Code, "msgSize", msg.Size)
-		if err != nil {
-			log.Error("msgToBytesFn-error", "err", err)
-			return nil, err
-		}
-		qm := &qmsg{
-			Code:       msg.Code,
-			Size:       msg.Size,
-			ReceivedAt: uint64(time.Now().Unix()),
-			Payload:    data,
-		}
-		dang, err := rlp.EncodeToBytes(qm)
-		if err != nil {
-			return nil, err
-		}
-		return dang, nil
-	}
-	bytesToMsgFn = func(data []byte) (Msg, error) {
-		qm := new(qmsg)
-		err := rlp.DecodeBytes(data, qm)
-		if err != nil {
-			log.Error("bytesToMsgFn_error : unknow msg will return rawmsg", "err", err)
-			msg := Msg{}
-			if len(data) > 0 {
-				msg = Msg{
-					Code:       RAWMSG,
-					Size:       uint32(len(data)),
-					ReceivedAt: time.Unix(int64(qm.ReceivedAt), 0),
-					Payload:    bytes.NewReader(data),
-				}
-				log.Warn("bytesToMsgFn-raw-msg", "len", len(data), "data", data)
-				err = nil
-			}
-			return msg, err
-		} else {
-			//log.Debug("bytesToMsgFn", "msgCode", qm.Code, "msgSize", qm.Size)
-			msg := Msg{
-				Code:       qm.Code,
-				Size:       qm.Size,
-				ReceivedAt: time.Unix(int64(qm.ReceivedAt), 0),
-				Payload:    bytes.NewReader(qm.Payload),
-			}
-			return msg, nil
-		}
 	}
 )
 
@@ -226,7 +165,7 @@ func (self *peerCounter) cmp(i int, condition connType) int {
 	total := self.total(condition)
 	self.lock.RLock()
 	defer self.lock.RUnlock()
-	log.Trace("peerCounter-cmp", "input", i, "total", total)
+	log.Debug("peerCounter-cmp", "input", i, "total", total)
 	if total > i {
 		return 1
 	} else if total < i {
@@ -240,10 +179,28 @@ func (self *peerCounter) cmp(i int, condition connType) int {
 func newAlibp2pTransport2(pubkey *ecdsa.PublicKey, sessionKey string, service *Alibp2p) transport {
 	unlinkCh := make(chan string)
 	unlinkSub := service.unlinkEvent.Subscribe(unlinkCh)
-	return &alibp2pTransport{pubkey: pubkey, sessionKey: sessionKey, service: service, unlinkSub: unlinkSub, unlinkCh: unlinkCh}
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		wg.Done()
+		for id := range unlinkCh {
+			if strings.Contains(sessionKey, id) {
+				unlinkSub.Unsubscribe()
+				log.Debug("alibp2pTransport-read-unlink-event", "id", id)
+				cancel()
+				return
+			}
+		}
+	}()
+	wg.Wait()
+	return &alibp2pTransport{ctx: ctx, pubkey: pubkey, sessionKey: sessionKey, service: service, unlinkSub: unlinkSub, unlinkCh: unlinkCh}
+
 }
 
 func newAlibp2pTransport(_ net.Conn) transport {
+	panic("TODO newAlibp2pTransport")
 	return &alibp2pTransport{}
 }
 
@@ -282,11 +239,14 @@ func (a alibp2pTransport) ReadMsg() (Msg, error) {
 			}
 			log.Trace("alibp2pTransport-read-end", "msg", msg)
 			return msg, nil
-		case id := <-a.unlinkCh:
-			if strings.Contains(a.sessionKey, id) {
-				log.Trace("alibp2pTransport-read-unlink", "id", id)
-				return Msg{}, errors.New(DELPEER_UNLINK)
-			}
+		//case id := <-a.unlinkCh:
+		//	if strings.Contains(a.sessionKey, id) {
+		//		log.Trace("alibp2pTransport-read-unlink", "id", id)
+		//		return Msg{}, errors.New(DELPEER_UNLINK)
+		//	}
+		case <-a.ctx.Done():
+			log.Debug("alibp2pTransport-read-unlink-ctxdone", "session", a.sessionKey)
+			return Msg{}, errors.New(DELPEER_UNLINK)
 		}
 	}
 	return Msg{}, errors.New("readmsg error")
@@ -307,7 +267,10 @@ func (a alibp2pTransport) WriteMsg(msg Msg) error {
 }
 
 func (a alibp2pTransport) close(err error) {
-	defer a.unlinkSub.Unsubscribe()
+	defer func() {
+		a.unlinkSub.Unsubscribe()
+		close(a.unlinkCh)
+	}()
 	if r, ok := err.(DiscReason); ok {
 		size, p, err := rlp.EncodeToReader(r)
 		if err != nil {
@@ -322,8 +285,8 @@ func (a alibp2pTransport) close(err error) {
 		log.Trace("alibp2pTransport.close", "sessionkey", a.sessionKey, "err", err, "closeErr", closeErr)
 		return
 	}
+	log.Debug("alibp2pTransport.close : unlink", "sessionkey", a.sessionKey, "err", err)
 	a.service.cleanConnect(a.pubkey, "alibp2pTransport-close", DELPEER_UNLINK)
-	log.Trace("alibp2pTransport.close : unlink", "sessionkey", a.sessionKey, "err", err)
 }
 
 func (self *Alibp2p) isInbound(id string) bool {
@@ -349,6 +312,13 @@ func (self *Alibp2p) setRetry(sessionkey string, inbound bool) error {
 }
 
 func NewAlibp2p(ctx context.Context, port, muxport, maxpeers int, networkid *big.Int, s *Server, packetFilter func(*ecdsa.PublicKey, uint16, uint32) error) *Alibp2p {
+	//loglevel := 3
+	//if os.Getenv("loglevel") != "3" {
+	//	if ll, err := strconv.Atoi(os.Getenv("loglevel")); err == nil {
+	//		loglevel = ll
+	//	}
+	//}
+
 	var muxPort *big.Int = nil
 	if muxport > 0 {
 		muxPort = big.NewInt(int64(muxport))
@@ -373,6 +343,9 @@ func NewAlibp2p(ctx context.Context, port, muxport, maxpeers int, networkid *big
 		PrivKey:         s.PrivateKey,
 		Bootnodes:       s.Alibp2pBootstrapNodes,
 		BootstrapPeriod: bootstrapPeriod,
+		Loglevel:        0,
+		ConnLow:         50,
+		ConnHi:          1000,
 	})
 	return srv
 }
@@ -388,15 +361,19 @@ func (self *Alibp2p) BootstrapOnce() error {
 	return self.p2pservice.BootstrapOnce()
 }
 
-func (self *Alibp2p) Ping(id string) (string, error) {
+func (self *Alibp2p) PingWithTimeout(id string, timeout time.Duration) (string, error) {
 	log.Info("<- alibp2p-ping <-", "id", id)
-	resp, err := self.p2pservice.Request(id, pingpid, []byte("ping"))
+	resp, err := self.p2pservice.RequestWithTimeout(id, pingpid, []byte("ping"), timeout)
 	if err != nil {
 		log.Error("<- alibp2p-ping-error <-", "id", id, "err", err)
 		return "", err
 	}
 	log.Info("-> alibp2p-ping ->", "id", id, "pkg", string(resp), "err", err)
 	return string(resp), err
+}
+
+func (self *Alibp2p) Ping(id string) (string, error) {
+	return self.PingWithTimeout(id, 0)
 }
 
 func (self *Alibp2p) pingservice() {
@@ -781,7 +758,7 @@ func (self *Alibp2p) loopRetrySetup() {
 				proto, pkg := self.preMsg()
 				directs, _ := self.p2pservice.Conns()
 				if contains(directs, id) {
-					resp, err := self.p2pservice.Request(id, proto, relink.Bytes())
+					resp, err := self.p2pservice.RequestWithTimeout(id, proto, relink.Bytes(), 3*time.Second)
 					if err != nil {
 						log.Error("setupRetryLoop-do-1", "err", err, "id", id)
 						self.retryList.Delete(k)
@@ -824,15 +801,18 @@ func (self *Alibp2p) checkConn(id, session string, preRtn []byte, inbound bool) 
 			self.setRetry(genSessionkey(id, session), inbound)
 		}
 	}()
+
 	if self.peerCounter.cmp(self.maxpeers, EMPTY) >= 0 {
 		err = errors.New("too many peers")
 		return
 	}
-	if !inbound && self.peerCounter.cmp(self.maxpeers/3, OUTBOUND) >= 0 {
+	// 连出去的，不能超过 1/3 maxpeers
+	if !inbound && self.maxpeers > 3 && self.peerCounter.cmp(self.maxpeers/3, OUTBOUND) >= 0 {
 		err = errors.New("too many outbounds")
 		return
 	}
-	// inbound == false 时，必须要带上 preRtn 消息，否则就是错误包
+
+	// inbound == false 时 (连出去的)，必须要带上 preRtn 消息，否则就是错误包
 	if !inbound && (len(preRtn) == 0 || len(preRtn) > 1) {
 		err = fmt.Errorf("error pre msg : %v", preRtn)
 		return
@@ -866,7 +846,13 @@ func (self *Alibp2p) onConnected(inbound bool, session string, pubkey *ecdsa.Pub
 			self.msgReaders.Delete(key)
 			self.retryList.Delete(id)
 		}
-		bound connType
+		bound       connType
+		checkPreRtn = func() error {
+			if preRtn != nil && len(preRtn) > 8 && bytes.Equal(make([]byte, 8), preRtn[:8]) {
+				return errors.New(string(preRtn[8:]))
+			}
+			return nil
+		}
 	)
 
 	self.peerCounter.add(id, session)
@@ -889,6 +875,22 @@ func (self *Alibp2p) onConnected(inbound bool, session string, pubkey *ecdsa.Pub
 		"id", id,
 		"session", session)
 
+	if err = checkPreRtn(); err != nil {
+		log.Error("checkPreRtn", "id", id, "err", err)
+		errcleanFn(id, key, err)
+		self.setRetry(genSessionkey(id, session), inbound)
+		return
+	}
+
+	if reason := self.checkConn(id, session, preRtn, inbound); reason != nil {
+		log.Debug("unlink-task-gen", "id", id, "inbound", inbound, "reason", reason)
+		errcleanFn(id, key, err)
+		c.close(errors.New("unlink"))
+		//self.cleanConnect(pubkey, session, DELPEER_UNLINK)
+		log.Debug("unlink-task-done", "id", id, "inbound", inbound, "reason", reason)
+		return
+	}
+
 	if err = self.srv.setupConn(c, c.flags, distNode); err != nil {
 		errcleanFn(id, key, err)
 		c.close(err)
@@ -896,21 +898,22 @@ func (self *Alibp2p) onConnected(inbound bool, session string, pubkey *ecdsa.Pub
 		return
 	}
 
-	if reason := self.checkConn(id, session, preRtn, inbound); reason != nil {
-		go func() {
-			log.Trace("unlink-task-gen : exec after 5 sec", "id", id, "inbound", inbound, "reason", reason)
-			// 这个地方要给 setupConn 流出足够多的时间
-			time.Sleep(5 * time.Second)
-			resp, err := self.p2pservice.Request(id, premsgpid, unlink.Bytes())
-			self.cleanConnect(pubkey, session, DELPEER_UNLINK)
-			log.Trace("unlink-task-done", "id", id, "inbound", inbound, "resp", resp, "err", err)
-		}()
-	}
-
+	/*
+		if reason := self.checkConn(id, session, preRtn, inbound); reason != nil {
+			go func() {
+				log.Trace("unlink-task-gen : exec after 5 sec", "id", id, "inbound", inbound, "reason", reason)
+				// 这个地方要给 setupConn 流出足够多的时间
+				time.Sleep(5 * time.Second)
+				resp, err := self.p2pservice.Request(id, premsgpid, unlink.Bytes())
+				self.cleanConnect(pubkey, session, DELPEER_UNLINK)
+				log.Trace("unlink-task-done", "id", id, "inbound", inbound, "resp", resp, "err", err)
+			}()
+		}
+	*/
 	self.allowPeers.Store(key, inbound)
 	self.peerCounter.set(id, session, string(bound))
 
-	log.Trace("peerscounter : add",
+	log.Debug("peerscounter : add",
 		"maxpeers", self.maxpeers,
 		"total", self.peerCounter.total(EMPTY),
 		"total-in", self.peerCounter.total(INBOUND),
@@ -927,7 +930,7 @@ func (self *Alibp2p) onDisconnected(session string, pubkey *ecdsa.PublicKey) {
 func (self *Alibp2p) cleanConnect(pubkey *ecdsa.PublicKey, session, delpeerAction string) {
 	id, _ := alibp2p.ECDSAPubEncode(pubkey)
 	key := genSessionkey(id, session)
-	log.Trace("cleanConnect", "id", id, "inbound", self.isInbound(id), "delpeer", delpeerAction)
+	log.Debug("cleanConnect", "id", id, "inbound", self.isInbound(id), "delpeer", delpeerAction)
 	defer func() {
 		//self.allowPeers.Delete(key)
 		if errMsg := recover(); errMsg != nil {
@@ -939,7 +942,7 @@ func (self *Alibp2p) cleanConnect(pubkey *ecdsa.PublicKey, session, delpeerActio
 		case DELPEER_DISCONN:
 			self.peerCounter.del(id, session, false)
 		}
-		log.Trace("peerscounter : del",
+		log.Debug("peerscounter : del",
 			"max", self.maxpeers,
 			"total", self.peerCounter.total(EMPTY),
 			"total-in", self.peerCounter.total(INBOUND),
@@ -948,13 +951,14 @@ func (self *Alibp2p) cleanConnect(pubkey *ecdsa.PublicKey, session, delpeerActio
 	}()
 	v, ok := self.msgReaders.Load(key)
 	if ok && v != nil {
-		log.Trace("cleanConnect-unlinkEvent-send", "id", id)
+		log.Debug("cleanConnect-unlinkEvent-send", "id", id)
 		n := self.unlinkEvent.Send(id)
-		log.Trace("cleanConnect-unlinkEvent-done", "nsent", n)
+		log.Debug("cleanConnect-unlinkEvent-done", "nsent", n)
 		msgCh := v.(chan Msg)
 		close(msgCh)
 		self.msgReaders.Delete(key)
 	}
+	log.Debug("cleanConnect-unlinkEvent-done-delpeer", "id", id)
 	self.srv.delpeer <- peerDrop{
 		&Peer{rw: &conn{id: discover.PubkeyID(pubkey), session: session}},
 		errors.New(delpeerAction),

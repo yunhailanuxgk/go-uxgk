@@ -12,6 +12,7 @@ import (
 	apnet "github.com/libp2p/go-libp2p-pnet"
 	yamux "github.com/libp2p/go-libp2p-yamux"
 	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 )
@@ -35,6 +36,7 @@ var (
 	pubkeyCache, _          = lru.New(10000)
 	DefaultProtocols        = []protocol.ID{ProtocolDHT}
 	loopboot, loopbootstrap int32
+	notimeout               = time.Time{}
 )
 
 func (cfg Config) ProtectorOpt() (libp2p.Option, error) {
@@ -70,19 +72,26 @@ func DefaultConfig() *Config {
 	}
 }
 */
-func (cfg Config) MuxTransportOption() libp2p.Option {
+func (cfg Config) MuxTransportOption(loglevel int) libp2p.Option {
 	ymxtpt := &yamux.Transport{
 		AcceptBacklog:          256,
 		EnableKeepAlive:        true,
 		KeepAliveInterval:      45 * time.Second,
 		ConnectionWriteTimeout: 45 * time.Second,
 		MaxStreamWindowSize:    uint32(256 * 1024),
-		LogOutput:              ioutil.Discard,
-		//LogOutput:              os.Stderr,
+		//LogOutput:              ioutil.Discard,
 		ReadBufSize:        4096,
 		MaxMessageSize:     128 * 1024, // Means 128KiB/10s
 		WriteCoalesceDelay: 100 * time.Microsecond,
 	}
+
+	switch loglevel {
+	case 3, 4, 5:
+		ymxtpt.LogOutput = os.Stderr
+	default:
+		ymxtpt.LogOutput = ioutil.Discard
+	}
+
 	return libp2p.ChainOptions(
 		libp2p.Muxer("/yamux/1.0.0", ymxtpt),
 		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
