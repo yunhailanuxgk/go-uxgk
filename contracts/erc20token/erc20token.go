@@ -42,7 +42,11 @@ func init() {
 	Template.abi, _ = abi.JSON(strings.NewReader(Template.abij))
 }
 
-func (self *erc20token) Compile(_initialSupply *big.Int, _name string, _symbol string, _decimals *big.Int) ([]byte, error) {
+func (self *erc20token) Compile(
+	_initialSupply *big.Int,
+	_name string,
+	_symbol string,
+	_decimals *big.Int) ([]byte, error) {
 	if !params.IsDevnet() && !params.IsTestnet() {
 		return nil, errors.New("TODO : mainnet not support yet")
 	}

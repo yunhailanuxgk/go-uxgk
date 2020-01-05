@@ -9,39 +9,40 @@ import (
 	"math/big"
 )
 
-const (
-	func_lock    = "lock"
-	func_unlock  = "unlock"
-	func_balance = "balance"
-)
+var LockLedgerAddr = common.HexToAddress("0x111")
 
-var (
-	LockLedgerAddr = common.HexToAddress("0x111")
-
-	get = func(db StateDB, k common.Hash) common.Hash {
-		v := db.GetState(LockLedgerAddr, k)
-		//fmt.Println("lock_ledger.go::get", "k", k, "v", v)
-		return v
-	}
-	set = func(db StateDB, k, v common.Hash) {
-		//fmt.Println("lock_ledger.go::set", "k", k, "v", v)
-		db.SetState(LockLedgerAddr, k, v)
-	}
-
-	owner = func(from, to common.Address) common.Hash {
-		return common.BytesToHash(crypto.Keccak256(from.Hash().Bytes(), to.Hash().Bytes()))
-	}
-)
-
-type LockLedger struct{}
+type LockLedger struct {
+	func_lock, func_unlock, func_balance string
+	get                                  func(db StateDB, k common.Hash) common.Hash
+	set                                  func(db StateDB, k, v common.Hash)
+	owner                                func(from, to common.Address) common.Hash
+}
 
 func (l *LockLedger) RequiredGas(input []byte) uint64 {
+	if l.get == nil {
+		l.func_lock = "lock"
+		l.func_unlock = "unlock"
+		l.func_balance = "balance"
+		l.get = func(db StateDB, k common.Hash) common.Hash {
+			v := db.GetState(LockLedgerAddr, k)
+			//fmt.Println("lock_ledger.go::get", "k", k, "v", v)
+			return v
+		}
+		l.set = func(db StateDB, k, v common.Hash) {
+			//fmt.Println("lock_ledger.go::set", "k", k, "v", v)
+			db.SetState(LockLedgerAddr, k, v)
+		}
+
+		l.owner = func(from, to common.Address) common.Hash {
+			return common.BytesToHash(crypto.Keccak256(from.Hash().Bytes(), to.Hash().Bytes()))
+		}
+	}
 	return 0
 }
 
 //
 func (l *LockLedger) balance(ctx *PrecompiledContext, addr common.Address) ([]byte, error) {
-	h := get(ctx.evm.StateDB, addr.Hash())
+	h := l.get(ctx.evm.StateDB, addr.Hash())
 	b := new(big.Int).SetBytes(h.Bytes())
 	log.Info("LockLedger.balance", "addr", addr.Hex(), "balance", b)
 	return h.Bytes(), nil
@@ -55,32 +56,32 @@ func (l *LockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amou
 		return nil, errors.New("balance too low")
 	}
 	db.SubBalance(from, amount)
-	set(db, owner(from, to), from.Hash())
+	l.set(db, l.owner(from, to), from.Hash())
 
-	preH := get(db, to.Hash())
+	preH := l.get(db, to.Hash())
 	preAmount := new(big.Int).SetBytes(preH.Bytes())
 	finalAmount := new(big.Int).Add(preAmount, amount)
 	if len(finalAmount.Bytes()) > 32 {
 		return nil, errors.New("amount too big")
 	}
-	set(db, to.Hash(), common.BytesToHash(finalAmount.Bytes()))
+	l.set(db, to.Hash(), common.BytesToHash(finalAmount.Bytes()))
 	return nil, nil
 }
 
 func (l *LockLedger) unlock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
 	db := ctx.evm.StateDB
-	f := get(db, owner(from, to))
+	f := l.get(db, l.owner(from, to))
 	log.Info("LockLedger.unlock", "from", from.Hex(), "to", to.Hex(), "amount", amount, "owner", f.Hex())
 	if f != from.Hash() {
 		return nil, errors.New("error owner")
 	}
-	preH := get(db, to.Hash())
+	preH := l.get(db, to.Hash())
 	preAmount := new(big.Int).SetBytes(preH.Bytes())
 	if amount == nil || preAmount == nil || preAmount.Cmp(amount) < 0 {
 		return nil, errors.New("preAmount too low")
 	}
 	finalAmount := new(big.Int).Sub(preAmount, amount)
-	set(db, to.Hash(), common.BytesToHash(finalAmount.Bytes()))
+	l.set(db, to.Hash(), common.BytesToHash(finalAmount.Bytes()))
 	db.AddBalance(to, amount)
 	return nil, nil
 }
@@ -105,17 +106,17 @@ func (l *LockLedger) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) 
 	args := bytes.Split(input, []byte(","))
 	from := ctx.contract.Caller()
 	switch string(args[0]) {
-	case func_lock:
+	case l.func_lock:
 		toB := args[1]
 		amountB := args[2]
 		a, _ := new(big.Int).SetString(string(amountB), 10)
 		return l.lock(ctx, from, common.HexToAddress(string(toB)), a)
-	case func_unlock:
+	case l.func_unlock:
 		toB := args[1]
 		amountB := args[2]
 		a, _ := new(big.Int).SetString(string(amountB), 10)
 		return l.unlock(ctx, from, common.HexToAddress(string(toB)), a)
-	case func_balance:
+	case l.func_balance:
 		return l.balance(ctx, common.HexToAddress(string(args[1])))
 	}
 	return nil, errors.New("nothing_todo")

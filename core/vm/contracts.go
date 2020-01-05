@@ -50,6 +50,7 @@ var PrecompiledContractsHomestead = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{3}): &ripemd160hash{},
 	common.BytesToAddress([]byte{4}): &dataCopy{},
 	LockLedgerAddr:                   &LockLedger{},
+	TokennamesAddr:                   &Tokennames{},
 }
 
 // PrecompiledContractsByzantium contains the default set of pre-compiled Ethereum
@@ -64,6 +65,7 @@ var PrecompiledContractsByzantium = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{7}): &bn256ScalarMul{},
 	common.BytesToAddress([]byte{8}): &bn256Pairing{},
 	LockLedgerAddr:                   &LockLedger{},
+	TokennamesAddr:                   &Tokennames{},
 }
 
 // RunPrecompiledContract runs and evaluates the output of a precompiled contract.

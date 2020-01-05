@@ -1,7 +1,10 @@
-package params
+package erc20token
 
 import (
+	"bytes"
 	"encoding/hex"
+	"github.com/yunhailanuxgk/go-uxgk/common"
+	"regexp"
 	"testing"
 )
 
@@ -34,22 +37,19 @@ func TestIsERC20Contract(t *testing.T) {
 	}
 }
 
-func TestErc20trait_IsTransfer(t *testing.T) {
-	var input, _ = hex.DecodeString("a9059cbb0000000000000000000000002f00640a8952f92a099bd4638f750bc385d498f2000000000000000000000000000000000000000000000000000000000001e0f3")
-	a, b, c := ERC20Trait.IsTransfer(input)
-	t.Log(a, b, c)
-}
-
-func TestErc20trait_IsTransferFrom(t *testing.T) {
-	var input, _ = hex.DecodeString("23b872dd0000000000000000000000002f00640a8952f92a099bd4638f750bc385d498ff0000000000000000000000002f00640a8952f92a099bd4638f750bc385d498f200000000000000000000000000000000000000000000000000000000000392fa")
-	a, b, c, d := ERC20Trait.IsTransferFrom(input)
-	t.Log(a, b, c, d)
-}
-
 func TestDecode(t *testing.T) {
-	hello := "b714302f5d52ea18ddb632083348cc821c404ddf134b11c839f171941b91a3c4"
-	hb, err := hex.DecodeString(hello)
-	t.Log(err, string(hb))
+	hello := "0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000548656c6c6f000000000000000000000000000000000000000000000000000000"
+	var o string
+	b, _ := hex.DecodeString(hello)
+	ERC20Trait.erc20abi.Unpack(&o, "name", b)
+	t.Log(">>", o)
+	name := []byte("01234567890abcdefghij")
+	t.Log(len(name),name)
+	h := common.BytesToHash(name)
+	i := bytes.LastIndex(h.Bytes(),[]byte{0})
+	t.Log(len(h),string(h.Bytes()),i,h.Bytes()[i+1:])
+	a,e := regexp.MatchString( `^[a-zA-Z0-9]{3,20}$`, string(name))
+	t.Log(a,e)
 }
 
 // 发起测试交易，用来测试拦截并替换交易中的 account

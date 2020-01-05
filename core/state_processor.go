@@ -21,6 +21,7 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/consensus"
 	"github.com/yunhailanuxgk/go-uxgk/consensus/misc"
+	"github.com/yunhailanuxgk/go-uxgk/contracts/erc20token"
 	"github.com/yunhailanuxgk/go-uxgk/core/state"
 	"github.com/yunhailanuxgk/go-uxgk/core/types"
 	"github.com/yunhailanuxgk/go-uxgk/core/vm"
@@ -106,13 +107,12 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 	}
 
 	// add by linagc : 如果 to==nil 就是创建合约，此时判断是否为 erc20 合约
-	if tx.To() == nil && len(tx.Data()) > 4 && params.ERC20Trait.IsERC20(tx.Data()) {
+	if tx.To() == nil && len(tx.Data()) > 4 && erc20token.ERC20Trait.IsERC20(tx.Data()) {
 		// TODO
-		log.Info("TODO : ERC20 deploy , check name and symbol")
-		log.Info("TODO : ERC20 deploy , check name and symbol")
-		log.Info("TODO : ERC20 deploy , check name and symbol")
-		log.Info("TODO : ERC20 deploy , check name and symbol")
-		log.Info("TODO : ERC20 deploy , check name and symbol")
+		log.Info("TODO : ERC20 deploy , check name and symbol", "err",err,"failed", failed)
+		log.Info("TODO : ERC20 deploy , check name and symbol", "err",err,"failed", failed)
+		log.Info("TODO : ERC20 deploy , check name and symbol", "err",err,"failed", failed)
+		log.Info("TODO : ERC20 deploy , check name and symbol", "err",err,"failed", failed)
 	}
 
 	if tx.To() != nil && params.IsChiefAddress(*tx.To()) && params.IsChiefUpdate(tx.Data()) && failed {

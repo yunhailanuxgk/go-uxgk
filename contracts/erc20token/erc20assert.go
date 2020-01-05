@@ -1,9 +1,11 @@
-package params
+package erc20token
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/yunhailanuxgk/go-uxgk/accounts/abi"
+	"regexp"
 	"strings"
 )
 
@@ -64,3 +66,31 @@ func (self *erc20trait) SigOfName() []byte { return self.funcdict["name()"] }
 
 // Token 名称的方法签名，记录Token名，例如：USDT
 func (self *erc20trait) SigOfSymbol() []byte { return self.funcdict["symbol()"] }
+
+func (self *erc20trait) DecodeOutput(method string, output []byte) (interface{}, error) {
+	var o interface{}
+	err := self.erc20abi.Unpack(&o, method, output)
+	return o, err
+}
+
+func (self *erc20trait) VerifyName(name string) error {
+	ok, err := regexp.MatchString(`^[a-zA-Z0-9]{3,20}$`, string(name))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("erc20 name format error")
+	}
+	return nil
+}
+
+func (self *erc20trait) VerifySymbol(symbol string) error {
+	ok, err := regexp.MatchString(`^[a-zA-Z0-9]{1,12}$`, string(symbol))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("erc20 symbol format error")
+	}
+	return nil
+}

@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	MainnetGenesisHash = common.HexToHash("0x7f9c4c4cb4da085a1fdff8ae54cc99f3ce3aca6c37747acb4a8de4b41c15682b")                                                                 // enforce below configs on
+	MainnetGenesisHash = common.HexToHash("0x7f9c4c4cb4da085a1fdff8ae54cc99f3ce3aca6c37747acb4a8de4b41c15682b") // enforce below configs on
 	TestnetGenesisHash = common.HexToHash("0xce489718281be862e7b356c7c304e2da3355da5bb132279ed66cfc99c346853c")
 	DevnetGenesisHash  = common.HexToHash("0xe11f21ee330cfb50c3f31d9b792df2fb5e196739d562e642416974f339aa4304")
 )
@@ -56,7 +56,7 @@ var (
 		SIP001Block: big.NewInt(0),
 		SIP002Block: big.NewInt(1),
 		SIP003Block: big.NewInt(3),
-		Tribe: &TribeConfig{},
+		Tribe:       &TribeConfig{},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
@@ -119,6 +119,8 @@ var (
 		// ############
 		// # DEBUG <<<<
 		// ############
+
+		UIP001Block: big.NewInt(0),
 
 		// new rules for chief.tx of gaspool
 		SIP001Block: big.NewInt(0),
@@ -231,6 +233,8 @@ type ChainConfig struct {
 
 	Anmap001Block   *big.Int       `json:"anmap001Block,omitempty"`
 	Anmap001Address common.Address `json:"anmap001Address,omitempty"`
+
+	UIP001Block *big.Int `json:"uip001Block,omitempty"` // Verify ERC20 name and symbol
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.

@@ -17,8 +17,13 @@
 package vm
 
 import (
+	"bytes"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"github.com/yunhailanuxgk/go-uxgk/contracts/erc20token"
 	"math/big"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -216,6 +221,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}()
 	}
 	ret, err = run(evm, contract, input)
+	if bytes.Equal(input, []byte{6, 253, 222, 3}) {
+		fmt.Println(">>>>>>>>>>", err, input, hex.EncodeToString(ret))
+	}
 	//showstate(evm, contract, err)
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
@@ -401,6 +409,8 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 		evm.vmConfig.Tracer.CaptureStart(caller.Address(), contractAddr, true, code, gas, value)
 	}
 	start := time.Now()
+
+	//contract.value = big.NewInt(0)
 	ret, err = createRun(evm, contract, nil)
 
 	// check whether the max code size has been exceeded
@@ -413,6 +423,66 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 		createDataGas := uint64(len(ret)) * params.CreateDataGas
 		if contract.UseGas(createDataGas) {
 			evm.StateDB.SetCode(contractAddr, ret)
+			// eth.getTransactionReceipt("0x080b3af6bf7e2024d27562318d93d2593aa0d2ef4444d97947fbd33effe9167e")
+			// normal gas 3170066
+			// 			  3170066,
+
+			// UIP001 & ERC20 create
+			// UIP001 & ERC20 create
+			// UIP001 & ERC20 create
+			if params.IsUIP001Block(evm.BlockNumber) && erc20token.ERC20Trait.IsERC20(code) {
+				callerBalance := evm.StateDB.GetBalance(caller.Address())
+				erc20price, _ := new(big.Int).SetString("100000000000000000000", 10) // 100uxgk
+				if callerBalance.Cmp(erc20price) < 0 {
+					return nil, contractAddr, gas, errors.New("Token deploy fee can not less than 100UXGK")
+				}
+				// 获取合约中的 name 属性
+				nameData, _, err := evm.Call(caller, contractAddr, erc20token.ERC20Trait.SigOfName(), contract.Gas, contract.value)
+				if err != nil {
+					return nil, contractAddr, gas, err
+				}
+				// 获取合约中的 symbol 属性
+				symbolData, _, err := evm.Call(caller, contractAddr, erc20token.ERC20Trait.SigOfSymbol(), contract.Gas, contract.value)
+				if err != nil {
+					return nil, contractAddr, gas, err
+				}
+				name, err := erc20token.ERC20Trait.DecodeOutput("name", nameData)
+				if err != nil {
+					return nil, contractAddr, gas, err
+				}
+				symbol, err := erc20token.ERC20Trait.DecodeOutput("symbol", symbolData)
+				if err != nil {
+					return nil, contractAddr, gas, err
+				}
+
+				// 转换小写字母,忽略大小写
+				name = strings.ToLower(name.(string))
+				symbol = strings.ToLower(symbol.(string))
+				fmt.Println("===== TODO check name and symbol ====> ", evm.BlockNumber, "addr=", contractAddr.Hex(), "name=", name, "symbol=", symbol)
+				// call tokennames.whois method
+				nameInfo, _, err := evm.Call(caller, TokennamesAddr, []byte(fmt.Sprintf("whois,%s,%s", name, symbol)), contract.Gas, contract.value)
+				fmt.Println("===== who_is_rtn ====>", "err", err, "nameInfo", nameInfo)
+				if err != nil {
+					return nil, contractAddr, gas, err
+				}
+				ni := common.BytesToAddress(nameInfo[:32])
+				nj := common.BytesToHash(nameInfo[32:])
+				fmt.Println("======== check_owner ====>", ni.Hex(), contract.Caller().Hex(), nj)
+				if ni != contract.Caller() {
+					return nil, contractAddr, gas, errors.New("not name and symbol owner")
+				}
+				eh := common.Hash{}
+				if nj != eh {
+					return nil, contractAddr, gas, errors.New("name and symbol already bind")
+				}
+				fmt.Println("======== do_bind ======>", "erc20addr", contractAddr.Hex(), "name", name, "symbol", symbol)
+				_, _, err = evm.Call(caller, TokennamesAddr, []byte(fmt.Sprintf("bind,%s,%s,%s", name, symbol, contractAddr.Hex())), contract.Gas, contract.value)
+				if err != nil {
+					return nil, contractAddr, gas, err
+				}
+				evm.StateDB.SubBalance(caller.Address(), erc20price)
+				evm.StateDB.AddBalance(TokennamesAddr, erc20price)
+			}
 		} else {
 			err = ErrCodeStoreOutOfGas
 		}

@@ -662,3 +662,20 @@ func TribePeriod() uint64 {
 	}
 	return 14
 }
+
+func IsUIP001Block(num *big.Int) bool {
+	if IsTestnet() {
+		if TestnetChainConfig.UIP001Block != nil && TestnetChainConfig.UIP001Block.Cmp(num) <= 0 {
+			return true
+		}
+	} else if IsDevnet() {
+		if DevnetChainConfig.UIP001Block != nil && DevnetChainConfig.UIP001Block.Cmp(num) <= 0 {
+			return true
+		}
+	} else {
+		if MainnetChainConfig.UIP001Block != nil && MainnetChainConfig.UIP001Block.Cmp(num) <= 0 {
+			return true
+		}
+	}
+	return false
+}
