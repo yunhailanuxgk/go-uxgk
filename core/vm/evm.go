@@ -17,11 +17,10 @@
 package vm
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/yunhailanuxgk/go-uxgk/contracts/erc20token"
+	"github.com/yunhailanuxgk/go-uxgk/log"
 	"math/big"
 	"strings"
 	"sync"
@@ -221,9 +220,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}()
 	}
 	ret, err = run(evm, contract, input)
-	if bytes.Equal(input, []byte{6, 253, 222, 3}) {
-		fmt.Println(">>>>>>>>>>", err, input, hex.EncodeToString(ret))
-	}
+	//if bytes.Equal(input, []byte{6, 253, 222, 3}) {
+	//	fmt.Println(">>>>>>>>>>", err, input, hex.EncodeToString(ret))
+	//}
 	//showstate(evm, contract, err)
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
@@ -236,19 +235,19 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 	return ret, contract.Gas, err
 }
-
-func showstate(evm *EVM, contract *Contract, err error) {
-	if contract.Address() != LockLedgerAddr {
-		return
-	}
-	db := evm.StateDB
-	fmt.Println("11111111 show state ================>", err)
-	db.ForEachStorage(LockLedgerAddr, func(k, v common.Hash) bool {
-		fmt.Println("-->", k, v)
-		return true
-	})
-	fmt.Println("11111111 show state ================<", err)
-}
+//
+//func showstate(evm *EVM, contract *Contract, err error) {
+//	if contract.Address() != LockLedgerAddr {
+//		return
+//	}
+//	db := evm.StateDB
+//	fmt.Println("11111111 show state ================>", err)
+//	db.ForEachStorage(LockLedgerAddr, func(k, v common.Hash) bool {
+//		fmt.Println("-->", k, v)
+//		return true
+//	})
+//	fmt.Println("11111111 show state ================<", err)
+//}
 
 // CallCode executes the contract associated with the addr with the given input
 // as parameters. It also handles any necessary value transfer required and takes
@@ -458,16 +457,16 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 				// 转换小写字母,忽略大小写
 				name = strings.ToLower(name.(string))
 				symbol = strings.ToLower(symbol.(string))
-				fmt.Println("===== TODO check name and symbol ====> ", evm.BlockNumber, "addr=", contractAddr.Hex(), "name=", name, "symbol=", symbol)
+				log.Info("check name_symbol", "num", evm.BlockNumber, "addr", contractAddr.Hex(), "name", name, "symbol", symbol)
 				// call tokennames.whois method
 				nameInfo, _, err := evm.Call(caller, TokennamesAddr, []byte(fmt.Sprintf("whois,%s,%s", name, symbol)), contract.Gas, contract.value)
-				fmt.Println("===== who_is_rtn ====>", "err", err, "nameInfo", nameInfo)
 				if err != nil {
 					return nil, contractAddr, gas, err
 				}
+				log.Info("who_is_rtn", "nameInfo", nameInfo)
 				ni := common.BytesToAddress(nameInfo[:32])
 				nj := common.BytesToHash(nameInfo[32:])
-				fmt.Println("======== check_owner ====>", ni.Hex(), contract.Caller().Hex(), nj)
+				log.Info("check_owner", "owner", ni.Hex(), "erc20addr", contract.Caller().Hex(), "bindAddr", nj.Hex())
 				if ni != contract.Caller() {
 					return nil, contractAddr, gas, errors.New("not name and symbol owner")
 				}
@@ -475,7 +474,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 				if nj != eh {
 					return nil, contractAddr, gas, errors.New("name and symbol already bind")
 				}
-				fmt.Println("======== do_bind ======>", "erc20addr", contractAddr.Hex(), "name", name, "symbol", symbol)
+				log.Info("do_bind", "erc20addr", contractAddr.Hex(), "name", name, "symbol", symbol)
 				_, _, err = evm.Call(caller, TokennamesAddr, []byte(fmt.Sprintf("bind,%s,%s,%s", name, symbol, contractAddr.Hex())), contract.Gas, contract.value)
 				if err != nil {
 					return nil, contractAddr, gas, err
