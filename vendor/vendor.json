@@ -61,6 +61,10 @@
 			"revision": ""
 		},
 		{
+			"path": "github.com/cc14514/go-lib",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "cDMtzKmdTx4CcIpP4broa+16X9g=",
 			"path": "github.com/cespare/cp",
 			"revision": "165db2f241fd235aec29ba6d9b1ccd5f1c14637c",

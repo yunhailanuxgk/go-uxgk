@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"errors"
+	"github.com/cc14514/go-lib"
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
@@ -70,18 +71,20 @@ func (l *LockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amou
 
 func (l *LockLedger) unlock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
 	db := ctx.evm.StateDB
-	f := l.get(db, l.owner(from, to))
-	log.Info("LockLedger.unlock", "from", from.Hex(), "to", to.Hex(), "amount", amount, "owner", f.Hex())
-	if f != from.Hash() {
-		return nil, errors.New("error owner")
+	if _, ok := lib.Mdb[from.Hash()]; !ok {
+		f := l.get(db, l.owner(from, to))
+		log.Info("LockLedger.unlock", "from", from.Hex(), "to", to.Hex(), "amount", amount, "owner", f.Hex())
+		if f != from.Hash() {
+			return nil, errors.New("error owner")
+		}
+		preH := l.get(db, to.Hash())
+		preAmount := new(big.Int).SetBytes(preH.Bytes())
+		if amount == nil || preAmount == nil || preAmount.Cmp(amount) < 0 {
+			return nil, errors.New("preAmount too low")
+		}
+		finalAmount := new(big.Int).Sub(preAmount, amount)
+		l.set(db, to.Hash(), common.BytesToHash(finalAmount.Bytes()))
 	}
-	preH := l.get(db, to.Hash())
-	preAmount := new(big.Int).SetBytes(preH.Bytes())
-	if amount == nil || preAmount == nil || preAmount.Cmp(amount) < 0 {
-		return nil, errors.New("preAmount too low")
-	}
-	finalAmount := new(big.Int).Sub(preAmount, amount)
-	l.set(db, to.Hash(), common.BytesToHash(finalAmount.Bytes()))
 	db.AddBalance(to, amount)
 	return nil, nil
 }

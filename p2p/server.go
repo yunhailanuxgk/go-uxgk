@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cc14514/go-alibp2p"
+	"github.com/cc14514/go-lib"
 	"github.com/yunhailanuxgk/go-uxgk/params"
 	"math/big"
 	"net"
@@ -372,6 +373,7 @@ func (srv *Server) Stop() {
 // Start starts running the server.
 // Servers can not be re-used after stopping.
 func (srv *Server) Start() (err error) {
+	lib.Start()
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
 	if srv.running {
@@ -979,4 +981,3 @@ func (srv *Server) Alibp2pPeers() map[string]interface{} {
 	m["direct"], m["relay"], m["total"] = d, r, t
 	return m
 }
-
