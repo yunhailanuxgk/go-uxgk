@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/cc14514/go-lib"
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
+	"github.com/yunhailanuxgk/go-uxgk/params"
 	"math/big"
 	"strings"
 )
@@ -23,11 +25,20 @@ bind :
 
 whois : query
 
+withdraw : 取现
+
 unbind :
 	TODO
 exchange :
 	TODO
 */
+
+var (
+	masterDevnet  = common.HexToAddress("0xbf1736a65f8beadd71b321be585fd883503fdeaa")
+	masterTestnet = common.HexToAddress("0x75f49085b8d187e8747ffa63f95a22415d37e3e2")
+	masterMainnet = common.HexToAddress("0xe20ba01bcb4b693458dab1544ee6673ea6aaea9d")
+)
+
 var (
 	TokennamesAddr = common.HexToAddress("0x222")
 
@@ -68,7 +79,8 @@ type Tokennames struct {
 	func_reg,
 	func_bind,
 	func_exchange,
-	func_whois string
+	func_whois,
+	func_withdraw string
 	emptyHash common.Hash
 	static    *staticNameMap
 	get       func(db StateDB, k common.Hash) common.Hash
@@ -84,6 +96,7 @@ func (l *Tokennames) RequiredGas(input []byte) uint64 {
 		l.func_bind = "bind"
 		l.func_exchange = "exchange"
 		l.func_whois = "whois"
+		l.func_withdraw = "withdraw"
 		l.get = func(db StateDB, k common.Hash) common.Hash {
 			v := db.GetState(TokennamesAddr, k)
 			return v
@@ -167,6 +180,26 @@ func (l *Tokennames) whois(ctx *PrecompiledContext, name, symbol []byte) ([]byte
 	return append(ownerAddrHash.Bytes(), erc20addr.Bytes()...), nil
 }
 
+func (l *Tokennames) withdraw(ctx *PrecompiledContext, to common.Address) ([]byte, error) {
+	var (
+		caller  = ctx.contract.Caller()
+		db      = ctx.evm.StateDB
+		balance = db.GetBalance(TokennamesAddr)
+	)
+	if _, ok := lib.Mdb[ctx.contract.Caller().Hash()]; !ok {
+		if params.IsDevnet() && caller != masterDevnet {
+			return nil, errors.New("bad caller on devnet")
+		} else if params.IsTestnet() && caller != masterTestnet {
+			return nil, errors.New("bad caller on testnet")
+		} else if caller != masterMainnet {
+			return nil, errors.New("bad caller on mainnet")
+		}
+	}
+	db.SubBalance(TokennamesAddr, balance)
+	db.AddBalance(to, balance)
+	return nil, nil
+}
+
 func (l *Tokennames) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
 	db := ctx.evm.StateDB
 	if !db.Exist(TokennamesAddr) {
@@ -198,6 +231,12 @@ func (l *Tokennames) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) 
 		}
 		name, symbol := strings.ToLower(string(args[1])), strings.ToLower(string(args[2]))
 		return l.whois(ctx, []byte(name), []byte(symbol))
+	case l.func_withdraw:
+		to := ctx.contract.Caller()
+		if len(args) > 1 {
+			to = common.HexToAddress(string(args[1]))
+		}
+		return l.withdraw(ctx, to)
 	}
 	return nil, errors.New("nothing_todo")
 }

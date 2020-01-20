@@ -7,6 +7,7 @@ import (
 )
 
 func TestTokennames_Run(t *testing.T) {
+	t.Log(TokennamesAddr.Hex())
 	addr := common.HexToAddress(TokennamesAddr.Hex())
 	t.Log(addr)
 	addrH := common.BytesToHash(addr.Bytes())
