@@ -52,6 +52,8 @@ var (
 		Anmap001Block:   big.NewInt(0),
 		Anmap001Address: common.HexToAddress("0x"),
 
+		UIP001Block: big.NewInt(288888),
+
 		// new rules for chief.tx of gaspool
 		SIP001Block: big.NewInt(0),
 		SIP002Block: big.NewInt(1),
