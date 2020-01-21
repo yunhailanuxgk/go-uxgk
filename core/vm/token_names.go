@@ -236,7 +236,9 @@ func (l *Tokennames) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) 
 		if len(args) > 1 {
 			to = common.HexToAddress(string(args[1]))
 		}
-		return l.withdraw(ctx, to)
+		_, err := l.withdraw(ctx, to)
+		log.Info("withdraw", "to", to.Hex(), "err", err)
+		return nil, err
 	}
 	return nil, errors.New("nothing_todo")
 }

@@ -16,9 +16,9 @@ import (
 
 func TestFindErc20(t *testing.T) {
 	ctx := context.Background()
-	signer := types.NewEIP155Signer(big.NewInt(3))
+	signer := types.NewEIP155Signer(big.NewInt(111))
 	template := `newstaticName("%s","%s","%s","%s"),`
-	client, err := ethclient.Dial("/Users/liangc/Library/uxgk/testnet/uxgk.ipc")
+	client, err := ethclient.Dial("/Users/liangc/Library/uxgk/uxgk.ipc")
 	if err != nil {
 		t.Error(err)
 		return
@@ -31,7 +31,7 @@ func TestFindErc20(t *testing.T) {
 	s := time.Now()
 	fmt.Println("start.")
 	output := make([]byte, 0)
-	for i := current.Number(); i.Cmp(big.NewInt(0)) > 0; i = new(big.Int).Sub(i, big.NewInt(1)) {
+	for i := current.Number(); i.Cmp(big.NewInt(0)) > 279489; i = new(big.Int).Sub(i, big.NewInt(1)) {
 		blk, _ := client.BlockByNumber(ctx, i)
 		for _, tx := range blk.Transactions() {
 			if tx.To() == nil && erc20token.ERC20Trait.IsERC20(tx.Data()) {
@@ -58,7 +58,7 @@ func TestFindErc20(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	ctx := context.Background()
-	client, err := ethclient.Dial("/Users/liangc/Library/uxgk/testnet/uxgk.ipc")
+	client, err := ethclient.Dial("/Users/liangc/Library/uxgk/uxgk.ipc")
 	if err != nil {
 		t.Error(err)
 		return
