@@ -7,7 +7,6 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
-	"github.com/yunhailanuxgk/go-uxgk/params"
 	"math/big"
 	"strings"
 )
@@ -47,9 +46,6 @@ func (self *erc20token) Compile(
 	_name string,
 	_symbol string,
 	_decimals *big.Int) ([]byte, error) {
-	if !params.IsDevnet() && !params.IsTestnet() {
-		return nil, errors.New("TODO : mainnet not support yet")
-	}
 	// TODO check _name and _symbol
 	// TODO check _name and _symbol
 	// TODO check _name and _symbol
