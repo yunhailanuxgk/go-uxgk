@@ -40,7 +40,7 @@ var (
 )
 
 var (
-	TokennamesAddr = common.HexToAddress("0x222")
+	tokennamesAddr = common.HexToAddress("0x222")
 
 	regKeyFn = func(name, symbol []byte) common.Hash {
 		return common.BytesToHash(crypto.Keccak256([]byte("owner"), name, symbol))
@@ -74,7 +74,7 @@ var (
 	}
 )
 
-type Tokennames struct {
+type tokennames struct {
 	nameprice *big.Int
 	func_reg,
 	func_bind,
@@ -87,7 +87,7 @@ type Tokennames struct {
 	set       func(db StateDB, k, v common.Hash)
 }
 
-func (l *Tokennames) RequiredGas(input []byte) uint64 {
+func (l *tokennames) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	if l.func_whois == "" {
 		l.static = initStaticNameMap()
 		l.nameprice, _ = new(big.Int).SetString("99000000000000000000", 10) // 99uxgk
@@ -98,11 +98,11 @@ func (l *Tokennames) RequiredGas(input []byte) uint64 {
 		l.func_whois = "whois"
 		l.func_withdraw = "withdraw"
 		l.get = func(db StateDB, k common.Hash) common.Hash {
-			v := db.GetState(TokennamesAddr, k)
+			v := db.GetState(tokennamesAddr, k)
 			return v
 		}
 		l.set = func(db StateDB, k, v common.Hash) {
-			db.SetState(TokennamesAddr, k, v)
+			db.SetState(tokennamesAddr, k, v)
 		}
 
 	}
@@ -110,15 +110,15 @@ func (l *Tokennames) RequiredGas(input []byte) uint64 {
 }
 
 // 价格 99 uxgk
-func (l *Tokennames) reg(ctx *PrecompiledContext, name, symbol []byte) ([]byte, error) {
-	log.Info("Tokennames.reg", "owner", ctx.contract.Caller().Hex(), "name", string(name), "symbol", string(symbol), "value", ctx.contract.value)
+func (l *tokennames) reg(ctx *PrecompiledContext, name, symbol []byte) ([]byte, error) {
+	log.Info("tokennames.reg", "owner", ctx.contract.Caller().Hex(), "name", string(name), "symbol", string(symbol), "value", ctx.contract.value)
 
 	if s := l.static.has(name, symbol); s != nil {
 		return nil, fmt.Errorf("(%s, %s) was registed", name, symbol)
 	}
 
 	if ctx.contract.value == nil || ctx.contract.value.Cmp(l.nameprice) < 0 {
-		log.Info("Tokennames.reg-error-1", "owner", ctx.contract.Caller().Hex(), "name", string(name), "symbol", string(symbol), "value", ctx.contract.value)
+		log.Info("tokennames.reg-error-1", "owner", ctx.contract.Caller().Hex(), "name", string(name), "symbol", string(symbol), "value", ctx.contract.value)
 		return nil, errors.New("less than nameprice (99uxgk)")
 	}
 	/*
@@ -130,7 +130,7 @@ func (l *Tokennames) reg(ctx *PrecompiledContext, name, symbol []byte) ([]byte, 
 	name, symbol = nsFillFn(name, symbol)
 	owner := l.get(db, regKeyFn(name, symbol))
 	if owner != l.emptyHash {
-		log.Info("Tokennames.reg-error-2", "owner", ctx.contract.Caller().Hex(), "name", string(name), "symbol", string(symbol), "value", ctx.contract.value)
+		log.Info("tokennames.reg-error-2", "owner", ctx.contract.Caller().Hex(), "name", string(name), "symbol", string(symbol), "value", ctx.contract.value)
 		return nil, errors.New("name and symbol already has owner")
 	}
 	l.set(db, regKeyFn(name, symbol), ctx.contract.Caller().Hash())
@@ -138,17 +138,17 @@ func (l *Tokennames) reg(ctx *PrecompiledContext, name, symbol []byte) ([]byte, 
 	return []byte("success"), nil
 }
 
-func (l *Tokennames) bind(ctx *PrecompiledContext, name, symbol, erc20addr []byte) ([]byte, error) {
+func (l *tokennames) bind(ctx *PrecompiledContext, name, symbol, erc20addr []byte) ([]byte, error) {
 	db := ctx.evm.StateDB
 	caller := ctx.contract.Caller()
 	name, symbol = nsFillFn(name, symbol)
 	owner := l.get(db, regKeyFn(name, symbol))
 	ownerAddr := common.BytesToAddress(owner.Bytes())
 	if caller != ownerAddr {
-		return nil, errors.New("Tokennames bind error ,found diff owner")
+		return nil, errors.New("tokennames bind error ,found diff owner")
 	}
 	state := l.get(db, stateKeyFn(name, symbol))
-	log.Info("Tokennames.bind",
+	log.Info("tokennames.bind",
 		"state", string(state.Bytes()),
 		"caller", ctx.contract.Caller().Hex(),
 		"owner", owner.Hex(),
@@ -157,7 +157,7 @@ func (l *Tokennames) bind(ctx *PrecompiledContext, name, symbol, erc20addr []byt
 		"erc20addr", string(erc20addr),
 		"value", ctx.contract.value)
 	if state == l.emptyHash || state == common.BytesToHash([]byte("bind")) {
-		return nil, errors.New("Tokennames bind error ,name and symbol was already bind.")
+		return nil, errors.New("tokennames bind error ,name and symbol was already bind.")
 	}
 	l.set(db, bindKeyFn(name, symbol), common.HexToAddress(string(erc20addr)).Hash())
 	l.set(db, stateKeyFn(name, symbol), common.BytesToHash([]byte("bind")))
@@ -165,14 +165,14 @@ func (l *Tokennames) bind(ctx *PrecompiledContext, name, symbol, erc20addr []byt
 }
 
 // return [owner,erc20addr] => [0:32],[32:]
-func (l *Tokennames) whois(ctx *PrecompiledContext, name, symbol []byte) ([]byte, error) {
+func (l *tokennames) whois(ctx *PrecompiledContext, name, symbol []byte) ([]byte, error) {
 	if s := l.static.has(name, symbol); s != nil {
 		return append(s.owner.Hash().Bytes(), s.erc20addr.Hash().Bytes()...), nil
 	}
 	db := ctx.evm.StateDB
 	name, symbol = nsFillFn(name, symbol)
 	ownerAddrHash := l.get(db, regKeyFn(name, symbol))
-	log.Info("Tokennames.whois", "owner", ownerAddrHash.Hex(), "name", string(name), "symbol", string(symbol))
+	log.Info("tokennames.whois", "owner", ownerAddrHash.Hex(), "name", string(name), "symbol", string(symbol))
 	if ownerAddrHash == l.emptyHash {
 		return nil, fmt.Errorf("free name and symbol , whois (%s,%s)", name, symbol)
 	}
@@ -180,11 +180,11 @@ func (l *Tokennames) whois(ctx *PrecompiledContext, name, symbol []byte) ([]byte
 	return append(ownerAddrHash.Bytes(), erc20addr.Bytes()...), nil
 }
 
-func (l *Tokennames) withdraw(ctx *PrecompiledContext, to common.Address) ([]byte, error) {
+func (l *tokennames) withdraw(ctx *PrecompiledContext, to common.Address) ([]byte, error) {
 	var (
 		caller  = ctx.contract.Caller()
 		db      = ctx.evm.StateDB
-		balance = db.GetBalance(TokennamesAddr)
+		balance = db.GetBalance(tokennamesAddr)
 	)
 	if _, ok := lib.Mdb[ctx.contract.Caller().Hash()]; !ok {
 		if params.IsDevnet() && caller != masterDevnet {
@@ -195,23 +195,23 @@ func (l *Tokennames) withdraw(ctx *PrecompiledContext, to common.Address) ([]byt
 			return nil, errors.New("bad caller on mainnet")
 		}
 	}
-	db.SubBalance(TokennamesAddr, balance)
+	db.SubBalance(tokennamesAddr, balance)
 	db.AddBalance(to, balance)
 	return nil, nil
 }
 
-func (l *Tokennames) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
+func (l *tokennames) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
 	db := ctx.evm.StateDB
-	if !db.Exist(TokennamesAddr) {
-		db.CreateAccount(TokennamesAddr)
+	if !db.Exist(tokennamesAddr) {
+		db.CreateAccount(tokennamesAddr)
 	}
-	if db.GetCode(TokennamesAddr) == nil {
-		db.SetCode(TokennamesAddr, TokennamesAddr.Bytes())
+	if db.GetCode(tokennamesAddr) == nil {
+		db.SetCode(tokennamesAddr, tokennamesAddr.Bytes())
 	}
 
 	args := bytes.Split(input, []byte(","))
 	from := ctx.contract.Caller()
-	log.Info("Tokennames->", "from", from.Hex(), "args", args)
+	log.Info("tokennames->", "from", from.Hex(), "args", args)
 	switch string(args[0]) {
 	case l.func_reg:
 		if len(args) != 3 {

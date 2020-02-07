@@ -14,8 +14,8 @@ import (
 )
 
 func TestTokennames_Run(t *testing.T) {
-	t.Log(TokennamesAddr.Hex())
-	addr := common.HexToAddress(TokennamesAddr.Hex())
+	t.Log(tokennamesAddr.Hex())
+	addr := common.HexToAddress(tokennamesAddr.Hex())
 	t.Log(addr)
 	addrH := common.BytesToHash(addr.Bytes())
 	t.Log(addrH)
@@ -24,7 +24,7 @@ func TestTokennames_Run(t *testing.T) {
 }
 
 func TestTokennames_Run2(t *testing.T) {
-	t.Log(TokennamesAddr.Hex())
+	t.Log(tokennamesAddr.Hex())
 	data := []byte("reg,Hello,World")
 	t.Log(string(data), hex.EncodeToString(data))
 	data = []byte("whois,Hello,World")
@@ -55,7 +55,7 @@ func TestReg(t *testing.T) {
 	fmt.Println("addr =", prvToAddr(prv).Hex())
 	n, _ := client.PendingNonceAt(ctx, prvToAddr(prv))
 	n99, _ := new(big.Int).SetString("99000000000000000000", 10)
-	tx := types.NewTransaction(n, TokennamesAddr,
+	tx := types.NewTransaction(n, tokennamesAddr,
 		n99, big.NewInt(100000), big.NewInt(3),
 		[]byte("reg,foo,bar"))
 	signer := types.NewEIP155Signer(cid)
@@ -86,7 +86,7 @@ func TestWithdarw(t *testing.T) {
 	fmt.Println("addr =", prvToAddr(prv).Hex())
 	n, _ := client.PendingNonceAt(ctx, prvToAddr(prv))
 	n99, _ := new(big.Int).SetString("0", 10)
-	tx := types.NewTransaction(n, TokennamesAddr,
+	tx := types.NewTransaction(n, tokennamesAddr,
 		n99, big.NewInt(100000), big.NewInt(3),
 		[]byte("withdraw,0x0000000000000000000000000000000000000888"))
 	signer := types.NewEIP155Signer(cid)

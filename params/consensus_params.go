@@ -679,3 +679,20 @@ func IsUIP001Block(num *big.Int) bool {
 	}
 	return false
 }
+
+func IsUIP002Block(num *big.Int) bool {
+	if IsTestnet() {
+		if TestnetChainConfig.UIP002Block != nil && TestnetChainConfig.UIP002Block.Cmp(num) <= 0 {
+			return true
+		}
+	} else if IsDevnet() {
+		if DevnetChainConfig.UIP002Block != nil && DevnetChainConfig.UIP002Block.Cmp(num) <= 0 {
+			return true
+		}
+	} else {
+		if MainnetChainConfig.UIP002Block != nil && MainnetChainConfig.UIP002Block.Cmp(num) <= 0 {
+			return true
+		}
+	}
+	return false
+}

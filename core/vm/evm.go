@@ -235,14 +235,15 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 	return ret, contract.Gas, err
 }
+
 //
 //func showstate(evm *EVM, contract *Contract, err error) {
-//	if contract.Address() != LockLedgerAddr {
+//	if contract.Address() != lockLedgerAddr {
 //		return
 //	}
 //	db := evm.StateDB
 //	fmt.Println("11111111 show state ================>", err)
-//	db.ForEachStorage(LockLedgerAddr, func(k, v common.Hash) bool {
+//	db.ForEachStorage(lockLedgerAddr, func(k, v common.Hash) bool {
 //		fmt.Println("-->", k, v)
 //		return true
 //	})
@@ -459,7 +460,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 				symbol = strings.ToLower(symbol.(string))
 				log.Info("check name_symbol", "num", evm.BlockNumber, "addr", contractAddr.Hex(), "name", name, "symbol", symbol)
 				// call tokennames.whois method
-				nameInfo, _, err := evm.Call(caller, TokennamesAddr, []byte(fmt.Sprintf("whois,%s,%s", name, symbol)), contract.Gas, contract.value)
+				nameInfo, _, err := evm.Call(caller, tokennamesAddr, []byte(fmt.Sprintf("whois,%s,%s", name, symbol)), contract.Gas, contract.value)
 				if err != nil {
 					return nil, contractAddr, gas, err
 				}
@@ -475,12 +476,12 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 					return nil, contractAddr, gas, errors.New("name and symbol already bind")
 				}
 				log.Info("do_bind", "erc20addr", contractAddr.Hex(), "name", name, "symbol", symbol)
-				_, _, err = evm.Call(caller, TokennamesAddr, []byte(fmt.Sprintf("bind,%s,%s,%s", name, symbol, contractAddr.Hex())), contract.Gas, contract.value)
+				_, _, err = evm.Call(caller, tokennamesAddr, []byte(fmt.Sprintf("bind,%s,%s,%s", name, symbol, contractAddr.Hex())), contract.Gas, contract.value)
 				if err != nil {
 					return nil, contractAddr, gas, err
 				}
 				evm.StateDB.SubBalance(caller.Address(), erc20price)
-				evm.StateDB.AddBalance(TokennamesAddr, erc20price)
+				evm.StateDB.AddBalance(tokennamesAddr, erc20price)
 			}
 		} else {
 			err = ErrCodeStoreOutOfGas

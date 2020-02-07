@@ -38,39 +38,47 @@ type PrecompiledContext struct {
 }
 
 type PrecompiledContract interface {
-	RequiredGas(input []byte) uint64                           // RequiredPrice calculates the contract gas use
+	RequiredGas(ctx *PrecompiledContext, input []byte) uint64  // RequiredPrice calculates the contract gas use
 	Run(ctx *PrecompiledContext, input []byte) ([]byte, error) // Run runs the precompiled contract
 }
 
 // PrecompiledContractsHomestead contains the default set of pre-compiled Ethereum
 // contracts used in the Frontier and Homestead releases.
 var PrecompiledContractsHomestead = map[common.Address]PrecompiledContract{
-	common.BytesToAddress([]byte{1}): &ecrecover{},
-	common.BytesToAddress([]byte{2}): &sha256hash{},
-	common.BytesToAddress([]byte{3}): &ripemd160hash{},
-	common.BytesToAddress([]byte{4}): &dataCopy{},
-	LockLedgerAddr:                   &LockLedger{},
-	TokennamesAddr:                   &Tokennames{},
+	common.BytesToAddress([]byte{1}):                                &ecrecover{},
+	common.BytesToAddress([]byte{2}):                                &sha256hash{},
+	common.BytesToAddress([]byte{3}):                                &ripemd160hash{},
+	common.BytesToAddress([]byte{4}):                                &dataCopy{},
+	common.BytesToAddress(crypto.Keccak256(lockLedgerAddr.Bytes())): &lockLedger{},
+	common.BytesToAddress(crypto.Keccak256(tokennamesAddr.Bytes())): &tokennames{},
+	common.BytesToAddress(crypto.Keccak256(destroyAddr.Bytes())):    &destroy{},
+	lockLedgerAddr: &lockLedger{},
+	tokennamesAddr: &tokennames{},
+	destroyAddr:    &destroy{},
 }
 
 // PrecompiledContractsByzantium contains the default set of pre-compiled Ethereum
 // contracts used in the Byzantium release.
 var PrecompiledContractsByzantium = map[common.Address]PrecompiledContract{
-	common.BytesToAddress([]byte{1}): &ecrecover{},
-	common.BytesToAddress([]byte{2}): &sha256hash{},
-	common.BytesToAddress([]byte{3}): &ripemd160hash{},
-	common.BytesToAddress([]byte{4}): &dataCopy{},
-	common.BytesToAddress([]byte{5}): &bigModExp{},
-	common.BytesToAddress([]byte{6}): &bn256Add{},
-	common.BytesToAddress([]byte{7}): &bn256ScalarMul{},
-	common.BytesToAddress([]byte{8}): &bn256Pairing{},
-	LockLedgerAddr:                   &LockLedger{},
-	TokennamesAddr:                   &Tokennames{},
+	common.BytesToAddress([]byte{1}):                                &ecrecover{},
+	common.BytesToAddress([]byte{2}):                                &sha256hash{},
+	common.BytesToAddress([]byte{3}):                                &ripemd160hash{},
+	common.BytesToAddress([]byte{4}):                                &dataCopy{},
+	common.BytesToAddress([]byte{5}):                                &bigModExp{},
+	common.BytesToAddress([]byte{6}):                                &bn256Add{},
+	common.BytesToAddress([]byte{7}):                                &bn256ScalarMul{},
+	common.BytesToAddress([]byte{8}):                                &bn256Pairing{},
+	common.BytesToAddress(crypto.Keccak256(lockLedgerAddr.Bytes())): &lockLedger{},
+	common.BytesToAddress(crypto.Keccak256(tokennamesAddr.Bytes())): &tokennames{},
+	common.BytesToAddress(crypto.Keccak256(destroyAddr.Bytes())):    &destroy{},
+	lockLedgerAddr: &lockLedger{},
+	tokennamesAddr: &tokennames{},
+	destroyAddr:    &destroy{},
 }
 
 // RunPrecompiledContract runs and evaluates the output of a precompiled contract.
 func RunPrecompiledContract(ctx *PrecompiledContext, p PrecompiledContract, input []byte, contract *Contract) (ret []byte, err error) {
-	gas := p.RequiredGas(input)
+	gas := p.RequiredGas(ctx, input)
 	if contract.UseGas(gas) {
 		//fmt.Println("ctx.contract.gas=", ctx.contract.Gas, " ; contract.gas=", contract.Gas)
 		return p.Run(ctx, input)
@@ -81,7 +89,7 @@ func RunPrecompiledContract(ctx *PrecompiledContext, p PrecompiledContract, inpu
 // ECRECOVER implemented as a native contract.
 type ecrecover struct{}
 
-func (c *ecrecover) RequiredGas(input []byte) uint64 {
+func (c *ecrecover) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return params.EcrecoverGas
 }
 
@@ -118,7 +126,7 @@ type sha256hash struct{}
 //
 // This method does not require any overflow checking as the input size gas costs
 // required for anything significant is so high it's impossible to pay for.
-func (c *sha256hash) RequiredGas(input []byte) uint64 {
+func (c *sha256hash) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return uint64(len(input)+31)/32*params.Sha256PerWordGas + params.Sha256BaseGas
 }
 func (c *sha256hash) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
@@ -133,7 +141,7 @@ type ripemd160hash struct{}
 //
 // This method does not require any overflow checking as the input size gas costs
 // required for anything significant is so high it's impossible to pay for.
-func (c *ripemd160hash) RequiredGas(input []byte) uint64 {
+func (c *ripemd160hash) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return uint64(len(input)+31)/32*params.Ripemd160PerWordGas + params.Ripemd160BaseGas
 }
 func (c *ripemd160hash) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
@@ -149,7 +157,7 @@ type dataCopy struct{}
 //
 // This method does not require any overflow checking as the input size gas costs
 // required for anything significant is so high it's impossible to pay for.
-func (c *dataCopy) RequiredGas(input []byte) uint64 {
+func (c *dataCopy) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return uint64(len(input)+31)/32*params.IdentityPerWordGas + params.IdentityBaseGas
 }
 func (c *dataCopy) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
@@ -174,7 +182,7 @@ var (
 )
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
-func (c *bigModExp) RequiredGas(input []byte) uint64 {
+func (c *bigModExp) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	var (
 		baseLen = new(big.Int).SetBytes(getData(input, 0, 32))
 		expLen  = new(big.Int).SetBytes(getData(input, 32, 32))
@@ -285,7 +293,7 @@ func newTwistPoint(blob []byte) (*bn256.G2, error) {
 type bn256Add struct{}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
-func (c *bn256Add) RequiredGas(input []byte) uint64 {
+func (c *bn256Add) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return params.Bn256AddGas
 }
 
@@ -307,7 +315,7 @@ func (c *bn256Add) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
 type bn256ScalarMul struct{}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
-func (c *bn256ScalarMul) RequiredGas(input []byte) uint64 {
+func (c *bn256ScalarMul) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return params.Bn256ScalarMulGas
 }
 
@@ -336,7 +344,7 @@ var (
 type bn256Pairing struct{}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
-func (c *bn256Pairing) RequiredGas(input []byte) uint64 {
+func (c *bn256Pairing) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	return params.Bn256PairingBaseGas + uint64(len(input)/192)*params.Bn256PairingPerPointGas
 }
 

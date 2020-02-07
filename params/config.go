@@ -53,6 +53,7 @@ var (
 		Anmap001Address: common.HexToAddress("0x"),
 
 		UIP001Block: big.NewInt(288888),
+		//UIP002Block: big.NewInt(?),
 
 		// new rules for chief.tx of gaspool
 		SIP001Block: big.NewInt(0),
@@ -84,6 +85,7 @@ var (
 		Anmap001Address: common.HexToAddress("0x"),
 
 		UIP001Block: big.NewInt(277777),
+		//UIP002Block: big.NewInt(?),
 
 		// new rules for chief.tx of gaspool
 		SIP001Block: big.NewInt(0),
@@ -125,6 +127,7 @@ var (
 		// ############
 
 		UIP001Block: big.NewInt(0),
+		UIP002Block: big.NewInt(0),
 
 		// new rules for chief.tx of gaspool
 		SIP001Block: big.NewInt(0),
@@ -239,6 +242,7 @@ type ChainConfig struct {
 	Anmap001Address common.Address `json:"anmap001Address,omitempty"`
 
 	UIP001Block *big.Int `json:"uip001Block,omitempty"` // Verify ERC20 name and symbol
+	UIP002Block *big.Int `json:"uip002Block,omitempty"` // Fix init gas and append coin destroy func
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.

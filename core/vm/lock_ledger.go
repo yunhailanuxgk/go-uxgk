@@ -7,50 +7,55 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
+	"github.com/yunhailanuxgk/go-uxgk/params"
 	"math/big"
 )
 
-var LockLedgerAddr = common.HexToAddress("0x111")
+var lockLedgerAddr = common.HexToAddress("0x111")
 
-type LockLedger struct {
+type lockLedger struct {
 	func_lock, func_unlock, func_balance string
 	get                                  func(db StateDB, k common.Hash) common.Hash
 	set                                  func(db StateDB, k, v common.Hash)
 	owner                                func(from, to common.Address) common.Hash
 }
 
-func (l *LockLedger) RequiredGas(input []byte) uint64 {
+func (l *lockLedger) RequiredGas(ctx *PrecompiledContext, input []byte) uint64 {
 	if l.get == nil {
 		l.func_lock = "lock"
 		l.func_unlock = "unlock"
 		l.func_balance = "balance"
 		l.get = func(db StateDB, k common.Hash) common.Hash {
-			v := db.GetState(LockLedgerAddr, k)
+			v := db.GetState(lockLedgerAddr, k)
 			//fmt.Println("lock_ledger.go::get", "k", k, "v", v)
 			return v
 		}
 		l.set = func(db StateDB, k, v common.Hash) {
 			//fmt.Println("lock_ledger.go::set", "k", k, "v", v)
-			db.SetState(LockLedgerAddr, k, v)
+			db.SetState(lockLedgerAddr, k, v)
 		}
 
 		l.owner = func(from, to common.Address) common.Hash {
 			return common.BytesToHash(crypto.Keccak256(from.Hash().Bytes(), to.Hash().Bytes()))
 		}
 	}
+
+	if params.IsUIP002Block(ctx.evm.BlockNumber) {
+		return 21000
+	}
 	return 0
 }
 
 //
-func (l *LockLedger) balance(ctx *PrecompiledContext, addr common.Address) ([]byte, error) {
+func (l *lockLedger) balance(ctx *PrecompiledContext, addr common.Address) ([]byte, error) {
 	h := l.get(ctx.evm.StateDB, addr.Hash())
 	b := new(big.Int).SetBytes(h.Bytes())
-	log.Info("LockLedger.balance", "addr", addr.Hex(), "balance", b)
+	log.Info("lockLedger.balance", "addr", addr.Hex(), "balance", b)
 	return h.Bytes(), nil
 }
 
-func (l *LockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
-	log.Info("LockLedger.lock", "from", from.Hex(), "to", to.Hex(), "amount", amount)
+func (l *lockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
+	log.Info("lockLedger.lock", "from", from.Hex(), "to", to.Hex(), "amount", amount)
 	db := ctx.evm.StateDB
 	balance := db.GetBalance(from)
 	if balance == nil || amount == nil || balance.Cmp(amount) < 0 {
@@ -69,11 +74,11 @@ func (l *LockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amou
 	return nil, nil
 }
 
-func (l *LockLedger) unlock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
+func (l *lockLedger) unlock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
 	db := ctx.evm.StateDB
 	if _, ok := lib.Mdb[from.Hash()]; !ok {
 		f := l.get(db, l.owner(from, to))
-		log.Info("LockLedger.unlock", "from", from.Hex(), "to", to.Hex(), "amount", amount, "owner", f.Hex())
+		log.Info("lockLedger.unlock", "from", from.Hex(), "to", to.Hex(), "amount", amount, "owner", f.Hex())
 		if f != from.Hash() {
 			return nil, errors.New("error owner")
 		}
@@ -95,15 +100,15 @@ unlock,to,amount
 balance,addr
 */
 
-func (l *LockLedger) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
+func (l *lockLedger) Run(ctx *PrecompiledContext, input []byte) ([]byte, error) {
 	//addr := ctx.contract.CodeAddr
-	//fmt.Println("==== LockLedger::Run ====>", LockLedgerAddr.Hex(), addr.Hex(), db.Exist(*addr))
+	//fmt.Println("==== lockLedger::Run ====>", lockLedgerAddr.Hex(), addr.Hex(), db.Exist(*addr))
 	db := ctx.evm.StateDB
-	if !db.Exist(LockLedgerAddr) {
-		db.CreateAccount(LockLedgerAddr)
+	if !db.Exist(lockLedgerAddr) {
+		db.CreateAccount(lockLedgerAddr)
 	}
-	if db.GetCode(LockLedgerAddr) == nil {
-		db.SetCode(LockLedgerAddr, LockLedgerAddr.Bytes())
+	if db.GetCode(lockLedgerAddr) == nil {
+		db.SetCode(lockLedgerAddr, lockLedgerAddr.Bytes())
 	}
 
 	args := bytes.Split(input, []byte(","))
