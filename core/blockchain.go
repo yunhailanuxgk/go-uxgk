@@ -30,6 +30,7 @@ import (
 
 	"crypto/ecdsa"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/common/mclock"
 	"github.com/yunhailanuxgk/go-uxgk/consensus"
@@ -44,7 +45,6 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/params"
 	"github.com/yunhailanuxgk/go-uxgk/rlp"
 	"github.com/yunhailanuxgk/go-uxgk/trie"
-	lru "github.com/hashicorp/golang-lru"
 )
 
 var (
@@ -130,7 +130,6 @@ func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, engine co
 	blockCache, _ := lru.New(blockCacheLimit)
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	badBlocks, _ := lru.New(badBlockLimit)
-
 	bc := &BlockChain{
 		config:       config,
 		chainDb:      chainDb,

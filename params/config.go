@@ -23,8 +23,9 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/common"
 )
 
+//MainnetGenesisHash = common.HexToHash("0x7f9c4c4cb4da085a1fdff8ae54cc99f3ce3aca6c37747acb4a8de4b41c15682b") // enforce below configs on
 var (
-	MainnetGenesisHash = common.HexToHash("0x7f9c4c4cb4da085a1fdff8ae54cc99f3ce3aca6c37747acb4a8de4b41c15682b") // enforce below configs on
+	MainnetGenesisHash = common.HexToHash("0xdcd0c3fd96be7c2cc3223c367bbb211b081ba6f5a047281dd586dccd5419f12a")
 	TestnetGenesisHash = common.HexToHash("0xce489718281be862e7b356c7c304e2da3355da5bb132279ed66cfc99c346853c")
 	DevnetGenesisHash  = common.HexToHash("0xe11f21ee330cfb50c3f31d9b792df2fb5e196739d562e642416974f339aa4304")
 )
@@ -53,7 +54,7 @@ var (
 		Anmap001Address: common.HexToAddress("0x"),
 
 		UIP001Block: big.NewInt(288888),
-		//UIP002Block: big.NewInt(?),
+		UIP002Block: big.NewInt(416666),
 
 		// new rules for chief.tx of gaspool
 		SIP001Block: big.NewInt(0),
