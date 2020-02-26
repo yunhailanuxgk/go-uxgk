@@ -44,7 +44,6 @@ func newPeer(host *Whisper, remote *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		host:  host,
 		peer:  remote,
 		ws:    rw,
-		known: set.New(),
 		quit:  make(chan struct{}),
 	}
 }

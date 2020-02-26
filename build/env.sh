@@ -8,23 +8,23 @@ if [ ! -f "build/env.sh" ]; then
 fi
 
 # Create fake Go workspace if it doesn't exist yet.
-workspace="$PWD/build/_workspace"
-root="$PWD"
-ethdir="$workspace/src/github.com/yunhailanuxgk"
-if [ ! -L "$ethdir/go-uxgk" ]; then
-    mkdir -p "$ethdir"
-    cd "$ethdir"
-    ln -s ../../../../../. go-uxgk
-    cd "$root"
-fi
-
-# Set up the environment to use the workspace.
-GOPATH="$workspace"
-export GOPATH
-
-# Run the command inside the workspace.
-cd "$ethdir/go-uxgk"
-PWD="$ethdir/go-uxgk"
-
+# workspace="$PWD/build/_workspace"
+# root="$PWD"
+# ethdir="$workspace/src/github.com/yunhailanuxgk"
+# if [ ! -L "$ethdir/go-uxgk" ]; then
+#     mkdir -p "$ethdir"
+#     cd "$ethdir"
+#     ln -s ../../../../../. go-uxgk
+#     cd "$root"
+# fi
+#
+# # Set up the environment to use the workspace.
+# GOPATH="$workspace"
+# export GOPATH
+#
+# # Run the command inside the workspace.
+# cd "$ethdir/go-uxgk"
+# PWD="$ethdir/go-uxgk"
+#
 # Launch the arguments with the configured environment.
 exec "$@"

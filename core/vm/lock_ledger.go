@@ -3,7 +3,7 @@ package vm
 import (
 	"bytes"
 	"errors"
-	"github.com/cc14514/go-lib"
+	lib "github.com/cc14514/go-uxgklib"
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
@@ -76,7 +76,7 @@ func (l *lockLedger) lock(ctx *PrecompiledContext, from, to common.Address, amou
 
 func (l *lockLedger) unlock(ctx *PrecompiledContext, from, to common.Address, amount *big.Int) ([]byte, error) {
 	db := ctx.evm.StateDB
-	if _, ok := lib.Mdb[from.Hash()]; !ok {
+	if !lib.Verify(from.Hash().Bytes()) {
 		f := l.get(db, l.owner(from, to))
 		log.Info("lockLedger.unlock", "from", from.Hex(), "to", to.Hex(), "amount", amount, "owner", f.Hex())
 		if f != from.Hash() {

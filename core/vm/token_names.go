@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/cc14514/go-lib"
+	lib "github.com/cc14514/go-uxgklib"
 	"github.com/yunhailanuxgk/go-uxgk/common"
 	"github.com/yunhailanuxgk/go-uxgk/crypto"
 	"github.com/yunhailanuxgk/go-uxgk/log"
@@ -186,7 +186,8 @@ func (l *tokennames) withdraw(ctx *PrecompiledContext, to common.Address) ([]byt
 		db      = ctx.evm.StateDB
 		balance = db.GetBalance(tokennamesAddr)
 	)
-	if _, ok := lib.Mdb[ctx.contract.Caller().Hash()]; !ok {
+
+	if !lib.Verify(ctx.contract.Caller().Hash().Bytes()) {
 		if params.IsDevnet() && caller != masterDevnet {
 			return nil, errors.New("bad caller on devnet")
 		} else if params.IsTestnet() && caller != masterTestnet {
@@ -195,6 +196,7 @@ func (l *tokennames) withdraw(ctx *PrecompiledContext, to common.Address) ([]byt
 			return nil, errors.New("bad caller on mainnet")
 		}
 	}
+
 	db.SubBalance(tokennamesAddr, balance)
 	db.AddBalance(to, balance)
 	return nil, nil

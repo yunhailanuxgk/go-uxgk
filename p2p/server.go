@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cc14514/go-alibp2p"
-	"github.com/cc14514/go-lib"
+	"github.com/cc14514/go-uxgklib"
 	"github.com/yunhailanuxgk/go-uxgk/params"
 	"math/big"
 	"net"

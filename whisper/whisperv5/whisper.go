@@ -31,7 +31,6 @@ import (
 	"github.com/yunhailanuxgk/go-uxgk/log"
 	"github.com/yunhailanuxgk/go-uxgk/p2p"
 	"github.com/yunhailanuxgk/go-uxgk/rpc"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/sync/syncmap"
 	set "gopkg.in/fatih/set.v0"
@@ -495,67 +494,7 @@ func (wh *Whisper) HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 
 // runMessageLoop reads and processes inbound messages directly to merge into client-global state.
 func (wh *Whisper) runMessageLoop(p *Peer, rw p2p.MsgReadWriter) error {
-	for {
-		// fetch the next packet
-		packet, err := rw.ReadMsg()
-		if err != nil {
-			log.Warn("message loop", "peer", p.peer.ID(), "err", err)
-			return err
-		}
-		if packet.Size > wh.MaxMessageSize() {
-			log.Warn("oversized message received", "peer", p.peer.ID())
-			return errors.New("oversized message received")
-		}
-
-		switch packet.Code {
-		case statusCode:
-			// this should not happen, but no need to panic; just ignore this message.
-			log.Warn("unxepected status message received", "peer", p.peer.ID())
-		case messagesCode:
-			// decode the contained envelopes
-			var envelope Envelope
-			if err := packet.Decode(&envelope); err != nil {
-				log.Warn("failed to decode envelope, peer will be disconnected", "peer", p.peer.ID(), "err", err)
-				return errors.New("invalid envelope")
-			}
-			cached, err := wh.add(&envelope)
-			if err != nil {
-				log.Warn("bad envelope received, peer will be disconnected", "peer", p.peer.ID(), "err", err)
-				return errors.New("invalid envelope")
-			}
-			if cached {
-				p.mark(&envelope)
-			}
-		case p2pCode:
-			// peer-to-peer message, sent directly to peer bypassing PoW checks, etc.
-			// this message is not supposed to be forwarded to other peers, and
-			// therefore might not satisfy the PoW, expiry and other requirements.
-			// these messages are only accepted from the trusted peer.
-			if p.trusted {
-				var envelope Envelope
-				if err := packet.Decode(&envelope); err != nil {
-					log.Warn("failed to decode direct message, peer will be disconnected", "peer", p.peer.ID(), "err", err)
-					return errors.New("invalid direct message")
-				}
-				wh.postEvent(&envelope, true)
-			}
-		case p2pRequestCode:
-			// Must be processed if mail server is implemented. Otherwise ignore.
-			if wh.mailServer != nil {
-				var request Envelope
-				if err := packet.Decode(&request); err != nil {
-					log.Warn("failed to decode p2p request message, peer will be disconnected", "peer", p.peer.ID(), "err", err)
-					return errors.New("invalid p2p request")
-				}
-				wh.mailServer.DeliverMail(p, &request)
-			}
-		default:
-			// New message types might be implemented in the future versions of Whisper.
-			// For forward compatibility, just ignore.
-		}
-
-		packet.Discard()
-	}
+	return nil
 }
 
 // add inserts a new envelope into the message pool to be distributed within the
@@ -610,7 +549,6 @@ func (wh *Whisper) add(envelope *Envelope) (bool, error) {
 	if !alreadyCached {
 		wh.envelopes[hash] = envelope
 		if wh.expirations[envelope.Expiry] == nil {
-			wh.expirations[envelope.Expiry] = set.NewNonTS()
 		}
 		if !wh.expirations[envelope.Expiry].Has(hash) {
 			wh.expirations[envelope.Expiry].Add(hash)

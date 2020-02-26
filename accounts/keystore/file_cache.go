@@ -30,7 +30,7 @@ import (
 
 // fileCache is a cache of files seen during scan of keystore.
 type fileCache struct {
-	all     *set.SetNonTS // Set of all files from the keystore folder
+	all     set.Interface // Set of all files from the keystore folder
 	lastMod time.Time     // Last time instance when a file was modified
 	mu      sync.RWMutex
 }
@@ -51,8 +51,8 @@ func (fc *fileCache) scan(keyDir string) (set.Interface, set.Interface, set.Inte
 	defer fc.mu.Unlock()
 
 	// Iterate all the files and gather their metadata
-	all := set.NewNonTS()
-	mods := set.NewNonTS()
+	all := set.New(set.NonThreadSafe)
+	mods := set.New(set.NonThreadSafe)
 
 	var newLastMod time.Time
 	for _, fi := range files {
